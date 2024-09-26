@@ -1,25 +1,24 @@
-﻿namespace Contracts.Analyzers.Test;
+﻿namespace WpfAnalyzers.Test;
 
 extern alias Analyzers;
 
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VerifyCS = CSharpAnalyzerVerifier<Analyzers.Contracts.Analyzers.MCA1001VerifiedMethodMustBePrivate>;
+using VerifyCS = CSharpAnalyzerVerifier<Analyzers.WpfAnalyzers.WPFA1001MissingInitializeComponents>;
 
-public partial class MCA1001UnitTests
+public partial class WPFA1001UnitTests
 {
     [TestMethod]
     public async Task CoverageDirective_NoDiagnostic()
     {
         await VerifyCS.VerifyAnalyzerAsync(@"
 #define COVERAGE_A25BDFABDDF8402785EB75AD812DA952
-" + Prologs.Nullable, @"
-internal partial class Program
+" + Prologs.Default, @"
+public partial class MainWindow : Window
 {
-    [Access(""public"", ""static"")]
-    protected static void HelloFromVerified(string text, out string textPlus)
+    public MainWindow()
     {
-        textPlus = text + ""!"";
+        DataContext = this;
     }
 }
 ").ConfigureAwait(false);
@@ -29,12 +28,11 @@ internal partial class Program
     public async Task OldLanguageVersion_NoDiagnostic()
     {
         await VerifyCS.VerifyAnalyzerAsync(Prologs.Default, @"
-internal partial class Program
+public partial class MainWindow : Window
 {
-    [Access(""public"", ""static"")]
-    protected static void HelloFromVerified(string text, out string textPlus)
+    public MainWindow()
     {
-        textPlus = text + ""!"";
+        DataContext = this;
     }
 }
 ", Microsoft.CodeAnalysis.CSharp.LanguageVersion.CSharp6).ConfigureAwait(false);

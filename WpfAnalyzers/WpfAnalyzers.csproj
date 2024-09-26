@@ -13,9 +13,9 @@
         <Product />
         <Description>An analyzer dedicated to WPF diagnostics</Description>
         <Copyright>Copyright © 2024 David Le Bansais</Copyright>
-        <AssemblyVersion>1.0.0.2</AssemblyVersion>
-        <FileVersion>1.0.0.2</FileVersion>
-        <!--<RepositoryUrl>https://github.com/dlebansais/Method.Contracts.Analyzers</RepositoryUrl>-->
+        <AssemblyVersion>1.0.0.3</AssemblyVersion>
+        <FileVersion>1.0.0.3</FileVersion>
+        <RepositoryUrl>https://github.com/dlebansais/WpfAnalyzers</RepositoryUrl>
         <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
 
         <NeutralLanguage>en-US</NeutralLanguage>

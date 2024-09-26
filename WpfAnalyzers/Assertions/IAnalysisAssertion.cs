@@ -1,4 +1,4 @@
-﻿namespace Contracts.Analyzers;
+﻿namespace WpfAnalyzers;
 
 using Microsoft.CodeAnalysis.Diagnostics;
 

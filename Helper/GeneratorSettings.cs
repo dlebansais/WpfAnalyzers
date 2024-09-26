@@ -1,4 +1,4 @@
-﻿namespace Contracts.Analyzers.Helper;
+﻿namespace WpfAnalyzers.Helper;
 
 /// <summary>
 /// Represents the settings of the code generator.

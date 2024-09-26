@@ -1,37 +1,20 @@
-﻿namespace Contracts.Analyzers.Test;
+﻿namespace WpfAnalyzers.Test;
 
 public static class Prologs
 {
     public const string Default = @"
 using System;
-using Contracts;
+using System.Windows;
 
-";
-
-    public const string Nullable = @"
-#nullable enable
-
-using System;
-using Contracts;
-
-";
-
-    public const string IsExternalInit = @"
-#nullable enable
-
-using System;
-using System.ComponentModel;
-using Contracts;
-
-namespace System.Runtime.CompilerServices
+public partial class MainWindow : System.Windows.Window, System.Windows.Markup.IComponentConnector
 {
-    internal class IsExternalInit { }
+    public void InitializeComponent()
+    {
+    }
+
+    void System.Windows.Markup.IComponentConnector.Connect(int connectionId, object target)
+    {
+    }
 }
-
-";
-
-    public const string NoContract = @"
-using System;
-
 ";
 }

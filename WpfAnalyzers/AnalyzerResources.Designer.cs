@@ -61,7 +61,7 @@ namespace WpfAnalyzers {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The constructor is missing a call to the InitializeComponents method..
+        ///   Looks up a localized string similar to The constructor is missing a call to the InitializeComponent method..
         /// </summary>
         internal static string WPFA1001AnalyzerDescription {
             get {
@@ -70,7 +70,7 @@ namespace WpfAnalyzers {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Call to InitializeComponents missing in &apos;{0}&apos;.
+        ///   Looks up a localized string similar to Call to InitializeComponent missing in &apos;{0}&apos;.
         /// </summary>
         internal static string WPFA1001AnalyzerMessageFormat {
             get {
@@ -79,7 +79,7 @@ namespace WpfAnalyzers {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Missing InitializeComponents.
+        ///   Looks up a localized string similar to Missing InitializeComponent.
         /// </summary>
         internal static string WPFA1001AnalyzerTitle {
             get {

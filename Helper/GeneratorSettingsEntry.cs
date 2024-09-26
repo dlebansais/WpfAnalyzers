@@ -1,4 +1,4 @@
-﻿namespace Contracts.Analyzers.Helper;
+﻿namespace WpfAnalyzers.Helper;
 
 using System.Globalization;
 using Microsoft.CodeAnalysis.Diagnostics;

@@ -1,6 +1,6 @@
 ﻿#pragma warning disable CA1000 // Do not declare static members on generic types
 
-namespace Contracts.Analyzers.Test;
+namespace WpfAnalyzers.Test;
 
 using System.Threading;
 using System.Threading.Tasks;

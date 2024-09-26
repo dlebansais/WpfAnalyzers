@@ -1,4 +1,4 @@
-﻿namespace Contracts.Analyzers.Test;
+﻿namespace WpfAnalyzers.Test;
 
 using System;
 using System.Collections.Immutable;

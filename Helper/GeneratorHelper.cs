@@ -1,9 +1,10 @@
-﻿namespace Contracts.Analyzers.Helper;
+﻿namespace WpfAnalyzers.Helper;
 
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Contracts;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;

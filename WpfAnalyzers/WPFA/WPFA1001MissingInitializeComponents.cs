@@ -1,14 +1,15 @@
-﻿namespace Contracts.Analyzers;
+﻿namespace WpfAnalyzers;
 
+using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
+using Contracts;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 /// <summary>
-/// Analyzer for rule WPFA1001: missing InitializeComponents.
+/// Analyzer for rule WPFA1001: missing InitializeComponent.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class WPFA1001MissingInitializeComponents : DiagnosticAnalyzer
@@ -48,31 +49,72 @@ public class WPFA1001MissingInitializeComponents : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        context.RegisterSyntaxNodeAction(AnalyzeNode, SyntaxKind.MethodDeclaration);
+        context.RegisterSyntaxNodeAction(AnalyzeNode, SyntaxKind.ConstructorDeclaration);
     }
 
     private void AnalyzeNode(SyntaxNodeAnalysisContext context)
     {
-        AnalyzerTools.AssertSyntaxRequirements<MethodDeclarationSyntax>(
+        AnalyzerTools.AssertSyntaxRequirements<ConstructorDeclarationSyntax>(
             context,
             LanguageVersion.CSharp7,
-            AnalyzeVerifiedNode,
-            new SimpleAnalysisAssertion(context => ((MethodDeclarationSyntax)context.Node).Identifier.ValueText != string.Empty),
-            new SimpleAnalysisAssertion(context => !IsMethodPrivate((MethodDeclarationSyntax)context.Node)),
-            new SimpleAnalysisAssertion(context => ContractGenerator.GetFirstSupportedAttribute(context, (MethodDeclarationSyntax)context.Node) is not null));
+            AnalyzeVerifiedNode);
     }
 
-    private static bool IsMethodPrivate(MethodDeclarationSyntax methodDeclaration)
+    private void AnalyzeVerifiedNode(SyntaxNodeAnalysisContext context, ConstructorDeclarationSyntax constructorDeclaration, IAnalysisAssertion[] analysisAssertions)
     {
-        return methodDeclaration.Modifiers.All(modifier => !modifier.IsKind(SyntaxKind.ProtectedKeyword) &&
-                                                           !modifier.IsKind(SyntaxKind.PublicKeyword) &&
-                                                           !modifier.IsKind(SyntaxKind.InternalKeyword));
+        IMethodSymbol ConstructorSymbol = Contract.AssertNotNull(context.SemanticModel.GetDeclaredSymbol(constructorDeclaration));
+        INamedTypeSymbol ContainingType = Contract.AssertNotNull(ConstructorSymbol.ContainingType);
+
+        // If the containing class is not descending from Visual, no diagnostic.
+        if (!IsVisual(context, ContainingType))
+            return;
+
+        // Make sure InitializeComponent is called, otherwise issue the diagnostic. ExpressionBody case.
+        if (constructorDeclaration.ExpressionBody is ArrowExpressionClauseSyntax ExpressionBody)
+        {
+            if (ExpressionBody.Expression is InvocationExpressionSyntax InvocationExpression &&
+                InvocationExpression.Expression is IdentifierNameSyntax IdentifierName &&
+                IdentifierName.Identifier.Text == "InitializeComponent" &&
+                InvocationExpression.ArgumentList.Arguments.Count == 0)
+            {
+                // InitializeComponent is called, no diagnostic.
+                return;
+            }
+        }
+
+        // Make sure InitializeComponent is called, otherwise issue the diagnostic. Body case.
+        if (constructorDeclaration.Body is BlockSyntax Body)
+        {
+            foreach (var Statement in Body.Statements)
+                if (Statement is ExpressionStatementSyntax ExpressionStatement &&
+                    ExpressionStatement.Expression is InvocationExpressionSyntax InvocationExpression &&
+                    InvocationExpression.Expression is IdentifierNameSyntax IdentifierName &&
+                    IdentifierName.Identifier.Text == "InitializeComponent" &&
+                    InvocationExpression.ArgumentList.Arguments.Count == 0)
+                {
+                    // InitializeComponent is called, no diagnostic.
+                    return;
+                }
+        }
+
+        var Text = ContainingType.Name;
+
+        context.ReportDiagnostic(Diagnostic.Create(Rule, constructorDeclaration.Identifier.GetLocation(), Text));
     }
 
-    private void AnalyzeVerifiedNode(SyntaxNodeAnalysisContext context, MethodDeclarationSyntax methodDeclaration, IAnalysisAssertion[] analysisAssertions)
+    private static bool IsVisual(SyntaxNodeAnalysisContext context, INamedTypeSymbol typeSymbol)
     {
-        var Text = methodDeclaration.Identifier.ValueText;
+        var VisualTypeSymbol = context.Compilation.GetTypeByMetadataName("System.Windows.Media.Visual");
+        var BaseType = typeSymbol.BaseType;
 
-        context.ReportDiagnostic(Diagnostic.Create(Rule, context.Node.GetLocation(), Text));
+        while (BaseType is not null)
+        {
+            if (SymbolEqualityComparer.Default.Equals(BaseType, VisualTypeSymbol))
+                return true;
+
+            BaseType = BaseType.BaseType;
+        }
+
+        return false;
     }
 }

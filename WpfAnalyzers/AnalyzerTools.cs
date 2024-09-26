@@ -1,8 +1,7 @@
-﻿namespace Contracts.Analyzers;
+﻿namespace WpfAnalyzers;
 
 using System;
-using System.Linq;
-using Contracts.Analyzers.Helper;
+using Contracts;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -28,7 +27,7 @@ internal static class AnalyzerTools
     /// <param name="diagnosticId">The diagnostic id.</param>
     public static string GetHelpLink(string diagnosticId)
     {
-        return $"https://github.com/dlebansais/Method.Contracts.Analyzers/blob/master/doc/{diagnosticId}.md";
+        return $"https://github.com/dlebansais/WpfAnalyzers/blob/master/doc/{diagnosticId}.md";
     }
 
     /// <summary>
