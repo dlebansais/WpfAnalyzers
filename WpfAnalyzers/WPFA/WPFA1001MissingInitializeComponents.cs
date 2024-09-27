@@ -57,18 +57,21 @@ public class WPFA1001MissingInitializeComponents : DiagnosticAnalyzer
         AnalyzerTools.AssertSyntaxRequirements<ConstructorDeclarationSyntax>(
             context,
             LanguageVersion.CSharp7,
-            AnalyzeVerifiedNode);
+            AnalyzeVerifiedNode,
+            new SimpleAnalysisAssertion(context => IsVisual(context, (ConstructorDeclarationSyntax)context.Node)));
     }
 
-    private void AnalyzeVerifiedNode(SyntaxNodeAnalysisContext context, ConstructorDeclarationSyntax constructorDeclaration, IAnalysisAssertion[] analysisAssertions)
+    private static bool IsVisual(SyntaxNodeAnalysisContext context, ConstructorDeclarationSyntax constructorDeclaration)
     {
         IMethodSymbol ConstructorSymbol = Contract.AssertNotNull(context.SemanticModel.GetDeclaredSymbol(constructorDeclaration));
         INamedTypeSymbol ContainingType = Contract.AssertNotNull(ConstructorSymbol.ContainingType);
 
-        // If the containing class is not descending from Visual, no diagnostic.
-        if (!IsVisual(context, ContainingType))
-            return;
+        // Check whether the constructor is for a type descending from Visual.
+        return IsVisual(context, ContainingType);
+    }
 
+    private void AnalyzeVerifiedNode(SyntaxNodeAnalysisContext context, ConstructorDeclarationSyntax constructorDeclaration, IAnalysisAssertion[] analysisAssertions)
+    {
         // Make sure InitializeComponent is called, otherwise issue the diagnostic. ExpressionBody case.
         if (constructorDeclaration.ExpressionBody is ArrowExpressionClauseSyntax ExpressionBody)
         {
@@ -97,7 +100,7 @@ public class WPFA1001MissingInitializeComponents : DiagnosticAnalyzer
                 }
         }
 
-        var Text = ContainingType.Name;
+        string Text = constructorDeclaration.Identifier.Text;
 
         context.ReportDiagnostic(Diagnostic.Create(Rule, constructorDeclaration.Identifier.GetLocation(), Text));
     }

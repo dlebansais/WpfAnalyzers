@@ -1,5 +1,4 @@
-﻿/*
-namespace WpfAnalyzers;
+﻿namespace WpfAnalyzers;
 
 using System;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -23,4 +22,3 @@ internal class SimpleAnalysisAssertion : IAnalysisAssertion
 
     private readonly Func<SyntaxNodeAnalysisContext, bool> Method;
 }
-*/

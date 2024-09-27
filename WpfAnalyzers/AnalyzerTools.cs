@@ -1,10 +1,7 @@
 ﻿namespace WpfAnalyzers;
 
 using System;
-using Contracts;
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 /// <summary>
@@ -73,68 +70,5 @@ internal static class AnalyzerTools
     private static bool IsTrue(this IAnalysisAssertion analysisAssertion, SyntaxNodeAnalysisContext context)
     {
         return analysisAssertion.IsTrue(context);
-    }
-
-    /// <summary>
-    /// Checks whether an attribute is of the expected type.
-    /// </summary>
-    /// <typeparam name="T">The expected attribute type.</typeparam>
-    /// <param name="context">The context.</param>
-    /// <param name="attribute">The attribute.</param>
-    public static bool IsExpectedAttribute<T>(SyntaxNodeAnalysisContext context, AttributeSyntax? attribute)
-        where T : Attribute
-    {
-        return IsExpectedAttribute(context, typeof(T), attribute);
-    }
-
-    /// <summary>
-    /// Checks whether a type symbol is the expected type.
-    /// </summary>
-    /// <typeparam name="T">The expected attribute type.</typeparam>
-    /// <param name="context">The context.</param>
-    /// <param name="typeSymbol">The attribute.</param>
-    public static bool IsExpectedAttribute<T>(SyntaxNodeAnalysisContext context, ITypeSymbol? typeSymbol)
-        where T : Attribute
-    {
-        return IsExpectedAttribute(context, typeof(T), typeSymbol);
-    }
-
-    /// <summary>
-    /// Checks whether an attribute is of the expected type.
-    /// </summary>
-    /// <param name="context">The context.</param>
-    /// <param name="attributeType">The type.</param>
-    /// <param name="attribute">The attribute.</param>
-    public static bool IsExpectedAttribute(SyntaxNodeAnalysisContext context, Type attributeType, AttributeSyntax? attribute)
-    {
-        // There must be a parent attribute to any argument except in the most pathological cases.
-        Contract.RequireNotNull(attribute, out AttributeSyntax Attribute);
-
-        var TypeInfo = context.SemanticModel.GetTypeInfo(Attribute);
-        ITypeSymbol? TypeSymbol = TypeInfo.Type;
-
-        return IsExpectedAttribute(context, attributeType, TypeSymbol);
-    }
-
-    private static bool IsExpectedAttribute(SyntaxNodeAnalysisContext context, Type attributeType, ITypeSymbol? typeSymbol)
-    {
-        ITypeSymbol? ExpectedTypeSymbol = context.Compilation.GetTypeByMetadataName(attributeType.FullName);
-
-        return SymbolEqualityComparer.Default.Equals(typeSymbol, ExpectedTypeSymbol);
-    }
-
-    /// <summary>
-    /// Returns a string with <paramref name="oldString"/> replaced with <paramref name="newString"/>.
-    /// </summary>
-    /// <param name="s">The string with substrings to replace.</param>
-    /// <param name="oldString">The string to replace.</param>
-    /// <param name="newString">The new string.</param>
-    public static string Replace(string s, string oldString, string newString)
-    {
-#if NETSTANDARD2_1_OR_GREATER
-        return s.Replace(oldString, newString, StringComparison.Ordinal);
-#else
-        return s.Replace(oldString, newString);
-#endif
     }
 }
