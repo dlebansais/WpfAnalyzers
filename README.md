@@ -6,4 +6,4 @@
 
 | Code                        | Diagnostic                                                              |
 | --------------------------- | ----------------------------------------------------------------------- |
-| [WPFA1001](doc/WPFA1001.md) | missing InitializeComponent.                                            |
+| [WPFA1001](doc/WPFA1001.md) | Missing InitializeComponent.                                            |
