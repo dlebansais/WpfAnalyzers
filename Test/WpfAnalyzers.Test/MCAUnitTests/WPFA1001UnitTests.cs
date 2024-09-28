@@ -4,6 +4,7 @@ extern alias Analyzers;
 
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Testing;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VerifyCS = CSharpAnalyzerVerifier<Analyzers.WpfAnalyzers.WPFA1001MissingInitializeComponents>;
@@ -108,7 +109,7 @@ public partial class MainWindow : Window
         return 0;
     }
 }
-", Expected).ConfigureAwait(false);
+", includeCore: true, includeFramework:true, Expected).ConfigureAwait(false);
     }
 
     [TestMethod]
@@ -243,5 +244,103 @@ public partial class MainWindow : Window
     }
 }
 ").ConfigureAwait(false);
+    }
+
+    [TestMethod]
+    public async Task DirectVisualChild_Diagnostic()
+    {
+        await VerifyCS.VerifyAnalyzerAsync(string.Empty, @"
+using System;
+using System.Windows.Media;
+
+public partial class MainWindow : Visual, System.Windows.Markup.IComponentConnector
+{
+    public void InitializeComponent()
+    {
+    }
+
+    void System.Windows.Markup.IComponentConnector.Connect(int connectionId, object target)
+    {
+    }
+}
+
+public partial class MainWindow : Visual
+{
+    public [|MainWindow|]()
+    {
+    }
+}
+", LanguageVersion.Default, includeCore: true, includeFramework: false).ConfigureAwait(false);
+    }
+
+    [TestMethod]
+    public async Task IndirectVisualChild_NoDiagnostic()
+    {
+        await VerifyCS.VerifyAnalyzerAsync(string.Empty, @"
+using System;
+using System.Windows.Media;
+
+public partial class BaseVisual : Visual, System.Windows.Markup.IComponentConnector
+{
+    public void InitializeComponent()
+    {
+    }
+
+    void System.Windows.Markup.IComponentConnector.Connect(int connectionId, object target)
+    {
+    }
+}
+
+public partial class BaseVisual : Visual
+{
+    public BaseVisual()
+    {
+        InitializeComponent();
+    }
+}
+
+public partial class MainVisual : BaseVisual
+{
+    public MainVisual()
+    {
+    }
+}
+", LanguageVersion.Default, includeCore: true, includeFramework: false).ConfigureAwait(false);
+    }
+
+    [TestMethod]
+    public async Task IndirectWindowChild_NoDiagnostic()
+    {
+        await VerifyCS.VerifyAnalyzerAsync(string.Empty, @"
+using System;
+using System.Windows;
+
+public partial class BaseWindow : Window, System.Windows.Markup.IComponentConnector
+{
+    public void InitializeComponent()
+    {
+    }
+
+    void System.Windows.Markup.IComponentConnector.Connect(int connectionId, object target)
+    {
+    }
+}
+
+public partial class BaseWindow : Window
+{
+    public BaseWindow()
+    {
+        InitializeComponent();
+        DataContext = this;
+    }
+}
+
+public partial class MainWindow : BaseWindow
+{
+    public MainWindow()
+    {
+    }
+}
+", LanguageVersion.Default, includeCore: true, includeFramework: true).ConfigureAwait(false);
     }
 }

@@ -38,11 +38,15 @@ public static partial class CSharpAnalyzerVerifier<TAnalyzer>
                     MetadataReference.CreateFromFile(string.Format(CultureInfo.InvariantCulture, RuntimePath, "System")),
                     MetadataReference.CreateFromFile(string.Format(CultureInfo.InvariantCulture, RuntimePath, "System.Core")),
                     MetadataReference.CreateFromFile(string.Format(CultureInfo.InvariantCulture, RuntimePath, "System.Xaml")),
-                    MetadataReference.CreateFromFile(string.Format(CultureInfo.InvariantCulture, RuntimePath, "PresentationCore")),
-                    MetadataReference.CreateFromFile(string.Format(CultureInfo.InvariantCulture, RuntimePath, "PresentationFramework")),
                     MetadataReference.CreateFromFile(string.Format(CultureInfo.InvariantCulture, RuntimePath, "WindowsBase")),
                     MetadataReference.CreateFromFile(string.Format(CultureInfo.InvariantCulture, RuntimePath, @"Facades\System.Runtime")),
                 };
+
+                if (IncludeCore)
+                    DefaultReferences.Add(MetadataReference.CreateFromFile(string.Format(CultureInfo.InvariantCulture, RuntimePath, "PresentationCore")));
+
+                if (IncludeFramework)
+                    DefaultReferences.Add(MetadataReference.CreateFromFile(string.Format(CultureInfo.InvariantCulture, RuntimePath, "PresentationFramework")));
 
                 solution = solution.WithProjectMetadataReferences(projectId, DefaultReferences);
 
@@ -58,6 +62,8 @@ public static partial class CSharpAnalyzerVerifier<TAnalyzer>
         }
 
         public LanguageVersion Version { get; set; } = LanguageVersion.Default;
+        public bool IncludeCore { get; set; }
+        public bool IncludeFramework { get; set; }
 
         private static string GetRuntimePath()
         {

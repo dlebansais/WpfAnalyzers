@@ -3,6 +3,7 @@
 extern alias Analyzers;
 
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VerifyCS = CSharpAnalyzerVerifier<Analyzers.WpfAnalyzers.WPFA1001MissingInitializeComponents>;
 
@@ -21,7 +22,7 @@ public partial class MainWindow : Window
         DataContext = this;
     }
 }
-").ConfigureAwait(false);
+", LanguageVersion.Default, includeCore: true, includeFramework: true).ConfigureAwait(false);
     }
 
     [TestMethod]

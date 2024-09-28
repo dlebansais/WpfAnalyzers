@@ -1,6 +1,5 @@
 ﻿namespace WpfAnalyzers;
 
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using Contracts;
 using Microsoft.CodeAnalysis;
@@ -67,7 +66,8 @@ public class WPFA1001MissingInitializeComponents : DiagnosticAnalyzer
         INamedTypeSymbol ContainingType = Contract.AssertNotNull(ConstructorSymbol.ContainingType);
 
         // Check whether the constructor is for a type descending from Visual.
-        return IsVisual(context, ContainingType);
+        return IsVisual(context, ContainingType) &&
+               (IsPresentationCoreFirstAncestor(context, ContainingType) || IsPresentationFrameworkFirstAncestor(context, ContainingType));
     }
 
     private void AnalyzeVerifiedNode(SyntaxNodeAnalysisContext context, ConstructorDeclarationSyntax constructorDeclaration, IAnalysisAssertion[] analysisAssertions)
@@ -119,5 +119,32 @@ public class WPFA1001MissingInitializeComponents : DiagnosticAnalyzer
         }
 
         return false;
+    }
+
+    private static bool IsPresentationCoreFirstAncestor(SyntaxNodeAnalysisContext context, INamedTypeSymbol typeSymbol)
+    {
+        var VisualTypeSymbol = context.Compilation.GetTypeByMetadataName("System.Windows.Media.Visual");
+        var BaseType = typeSymbol.BaseType;
+
+        // IsVisual was successful, therefore VisualTypeSymbol can't be null.
+        var CoreAssemblySymbol = Contract.AssertNotNull(VisualTypeSymbol).ContainingAssembly;
+
+        // IsVisual was successful, therefore typeSymbol has a base type.
+        var BaseTypeAssembly = Contract.AssertNotNull(BaseType).ContainingAssembly;
+
+        return SymbolEqualityComparer.Default.Equals(BaseTypeAssembly, CoreAssemblySymbol);
+    }
+
+    private static bool IsPresentationFrameworkFirstAncestor(SyntaxNodeAnalysisContext context, INamedTypeSymbol typeSymbol)
+    {
+        var WindowTypeSymbol = context.Compilation.GetTypeByMetadataName("System.Windows.Window");
+        var FrameworkAssemblySymbol = WindowTypeSymbol?.ContainingAssembly;
+
+        var BaseType = typeSymbol.BaseType;
+
+        // IsVisual was successful, therefore typeSymbol has a base type.
+        var BaseTypeAssembly = Contract.AssertNotNull(BaseType).ContainingAssembly;
+
+        return SymbolEqualityComparer.Default.Equals(BaseTypeAssembly, FrameworkAssemblySymbol);
     }
 }
