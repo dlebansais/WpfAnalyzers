@@ -15,6 +15,8 @@ public partial class MainWindow : System.Windows.Window, System.Windows.Markup.I
     void System.Windows.Markup.IComponentConnector.Connect(int connectionId, object target)
     {
     }
+
+    internal System.Windows.Controls.Border testBorder;
 }
 ";
 }

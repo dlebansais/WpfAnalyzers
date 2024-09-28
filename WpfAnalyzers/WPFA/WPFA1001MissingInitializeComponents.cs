@@ -57,17 +57,15 @@ public class WPFA1001MissingInitializeComponents : DiagnosticAnalyzer
             context,
             LanguageVersion.CSharp7,
             AnalyzeVerifiedNode,
-            new SimpleAnalysisAssertion(context => IsVisual(context, (ConstructorDeclarationSyntax)context.Node)));
+            new SimpleAnalysisAssertion(context => IsWpfTypeConstructor(context, (ConstructorDeclarationSyntax)context.Node)));
     }
 
-    private static bool IsVisual(SyntaxNodeAnalysisContext context, ConstructorDeclarationSyntax constructorDeclaration)
+    private static bool IsWpfTypeConstructor(SyntaxNodeAnalysisContext context, ConstructorDeclarationSyntax constructorDeclaration)
     {
         IMethodSymbol ConstructorSymbol = Contract.AssertNotNull(context.SemanticModel.GetDeclaredSymbol(constructorDeclaration));
         INamedTypeSymbol ContainingType = Contract.AssertNotNull(ConstructorSymbol.ContainingType);
 
-        // Check whether the constructor is for a type descending from Visual.
-        return IsVisual(context, ContainingType) &&
-               (IsPresentationCoreFirstAncestor(context, ContainingType) || IsPresentationFrameworkFirstAncestor(context, ContainingType));
+        return WpfTools.IsWpfType(context, ContainingType);
     }
 
     private void AnalyzeVerifiedNode(SyntaxNodeAnalysisContext context, ConstructorDeclarationSyntax constructorDeclaration, IAnalysisAssertion[] analysisAssertions)
@@ -103,48 +101,5 @@ public class WPFA1001MissingInitializeComponents : DiagnosticAnalyzer
         string Text = constructorDeclaration.Identifier.Text;
 
         context.ReportDiagnostic(Diagnostic.Create(Rule, constructorDeclaration.Identifier.GetLocation(), Text));
-    }
-
-    private static bool IsVisual(SyntaxNodeAnalysisContext context, INamedTypeSymbol typeSymbol)
-    {
-        var VisualTypeSymbol = context.Compilation.GetTypeByMetadataName("System.Windows.Media.Visual");
-        var BaseType = typeSymbol.BaseType;
-
-        while (BaseType is not null)
-        {
-            if (SymbolEqualityComparer.Default.Equals(BaseType, VisualTypeSymbol))
-                return true;
-
-            BaseType = BaseType.BaseType;
-        }
-
-        return false;
-    }
-
-    private static bool IsPresentationCoreFirstAncestor(SyntaxNodeAnalysisContext context, INamedTypeSymbol typeSymbol)
-    {
-        var VisualTypeSymbol = context.Compilation.GetTypeByMetadataName("System.Windows.Media.Visual");
-        var BaseType = typeSymbol.BaseType;
-
-        // IsVisual was successful, therefore VisualTypeSymbol can't be null.
-        var CoreAssemblySymbol = Contract.AssertNotNull(VisualTypeSymbol).ContainingAssembly;
-
-        // IsVisual was successful, therefore typeSymbol has a base type.
-        var BaseTypeAssembly = Contract.AssertNotNull(BaseType).ContainingAssembly;
-
-        return SymbolEqualityComparer.Default.Equals(BaseTypeAssembly, CoreAssemblySymbol);
-    }
-
-    private static bool IsPresentationFrameworkFirstAncestor(SyntaxNodeAnalysisContext context, INamedTypeSymbol typeSymbol)
-    {
-        var WindowTypeSymbol = context.Compilation.GetTypeByMetadataName("System.Windows.Window");
-        var FrameworkAssemblySymbol = WindowTypeSymbol?.ContainingAssembly;
-
-        var BaseType = typeSymbol.BaseType;
-
-        // IsVisual was successful, therefore typeSymbol has a base type.
-        var BaseTypeAssembly = Contract.AssertNotNull(BaseType).ContainingAssembly;
-
-        return SymbolEqualityComparer.Default.Equals(BaseTypeAssembly, FrameworkAssemblySymbol);
     }
 }

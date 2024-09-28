@@ -7,11 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WpfAnalyzers", "WpfAnalyzer
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WpfAnalyzers.Test", "Test\WpfAnalyzers.Test\WpfAnalyzers.Test.csproj", "{B57CEBD1-2D09-4D0A-A8C4-F296368FC586}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Helper", "Helper\Helper.csproj", "{8F24E67C-7206-41A3-A91C-46A8266ED330}"
-	ProjectSection(ProjectDependencies) = postProject
-		{0B90EA49-21E8-4A02-AD29-21B007983AAB} = {0B90EA49-21E8-4A02-AD29-21B007983AAB}
-	EndProjectSection
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PreBuild", "PreBuild\PreBuild.csproj", "{0B90EA49-21E8-4A02-AD29-21B007983AAB}"
 EndProject
 Global
@@ -20,10 +15,6 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{1508B5BB-FC78-4D0B-B48C-BDF13607228E}.Debug|x64.ActiveCfg = Debug|x64
-		{1508B5BB-FC78-4D0B-B48C-BDF13607228E}.Debug|x64.Build.0 = Debug|x64
-		{1508B5BB-FC78-4D0B-B48C-BDF13607228E}.Release|x64.ActiveCfg = Release|x64
-		{1508B5BB-FC78-4D0B-B48C-BDF13607228E}.Release|x64.Build.0 = Release|x64
 		{390CD976-3B0B-4115-9D94-DD34B7F02CB1}.Debug|x64.ActiveCfg = Debug|x64
 		{390CD976-3B0B-4115-9D94-DD34B7F02CB1}.Debug|x64.Build.0 = Debug|x64
 		{390CD976-3B0B-4115-9D94-DD34B7F02CB1}.Release|x64.ActiveCfg = Release|x64
@@ -32,10 +23,6 @@ Global
 		{B57CEBD1-2D09-4D0A-A8C4-F296368FC586}.Debug|x64.Build.0 = Debug|x64
 		{B57CEBD1-2D09-4D0A-A8C4-F296368FC586}.Release|x64.ActiveCfg = Release|x64
 		{B57CEBD1-2D09-4D0A-A8C4-F296368FC586}.Release|x64.Build.0 = Release|x64
-		{8F24E67C-7206-41A3-A91C-46A8266ED330}.Debug|x64.ActiveCfg = Debug|x64
-		{8F24E67C-7206-41A3-A91C-46A8266ED330}.Debug|x64.Build.0 = Debug|x64
-		{8F24E67C-7206-41A3-A91C-46A8266ED330}.Release|x64.ActiveCfg = Release|x64
-		{8F24E67C-7206-41A3-A91C-46A8266ED330}.Release|x64.Build.0 = Release|x64
 		{0B90EA49-21E8-4A02-AD29-21B007983AAB}.Debug|x64.ActiveCfg = Debug|x64
 		{0B90EA49-21E8-4A02-AD29-21B007983AAB}.Debug|x64.Build.0 = Debug|x64
 		{0B90EA49-21E8-4A02-AD29-21B007983AAB}.Release|x64.ActiveCfg = Release|x64

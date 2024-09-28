@@ -94,7 +94,7 @@ public partial class MainWindow : Window
             );
 
         var Expected = new DiagnosticResult(DescriptorCS0201);
-        Expected = Expected.WithLocation("/0/Test0.cs", 20, 9);
+        Expected = Expected.WithLocation("/0/Test0.cs", 22, 9);
 
         await VerifyCS.VerifyAnalyzerAsync(@"
 public partial class MainWindow : Window
@@ -109,7 +109,7 @@ public partial class MainWindow : Window
         return 0;
     }
 }
-", includeCore: true, includeFramework:true, Expected).ConfigureAwait(false);
+", expected: Expected).ConfigureAwait(false);
     }
 
     [TestMethod]

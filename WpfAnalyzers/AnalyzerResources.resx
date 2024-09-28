@@ -129,4 +129,16 @@
     <value>Missing InitializeComponent</value>
     <comment>The title of the diagnostic.</comment>
   </data>
+  <data name="WPFA1002AnalyzerDescription" xml:space="preserve">
+    <value>Access to an object is forbidden in this thread.</value>
+    <comment>An optional longer localizable description of the diagnostic.</comment>
+  </data>
+  <data name="WPFA1002AnalyzerMessageFormat" xml:space="preserve">
+    <value>Access to '{0}' is forbidden in this thread</value>
+    <comment>The format-able message the diagnostic displays.</comment>
+  </data>
+  <data name="WPFA1002AnalyzerTitle" xml:space="preserve">
+    <value>Access to object is forbidden</value>
+    <comment>The title of the diagnostic.</comment>
+  </data>
 </root>

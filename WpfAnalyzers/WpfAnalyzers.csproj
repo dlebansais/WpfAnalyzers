@@ -47,6 +47,7 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.11.0" />
         <PackageReference Include="Nullable.Extended.Analyzer" Version="1.15.6169">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -55,7 +56,7 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="dlebansais.CSharpLatest" Version="1.0.2">
+        <PackageReference Include="dlebansais.CSharpLatest" Version="1.0.5">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
@@ -83,10 +84,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Helper\Helper.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
         <Compile Update="AnalyzerResources.Designer.cs" DesignTime="True" AutoGen="True" DependentUpon="AnalyzerResources.resx" />
         <EmbeddedResource Update="AnalyzerResources.resx" Generator="ResXFileCodeGenerator" LastGenOutput="AnalyzerResources.Designer.cs" />
     </ItemGroup>
@@ -98,13 +95,10 @@
         <Exec Command="if exist &quot;$(TargetPath)&quot; copy &quot;$(TargetDir)$(ProjectName).dll&quot; &quot;$(SolutionDir)nuget-debug\analyzers\dotnet\cs\&quot; &gt; nul" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
         <Exec Command="if exist &quot;$(TargetPath)&quot; copy &quot;$(TargetDir)$(ProjectName).pdb&quot; &quot;$(SolutionDir)nuget-debug\analyzers\dotnet\cs\&quot; &gt; nul" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
         <Exec Command="if exist &quot;$(TargetPath)&quot; copy &quot;$(TargetDir)$(ProjectName).xml&quot; &quot;$(SolutionDir)nuget-debug\analyzers\dotnet\cs\&quot; &gt; nul" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
-        <Exec Command="if exist &quot;$(TargetPath)&quot; copy &quot;$(TargetDir)Helper.dll&quot; &quot;$(SolutionDir)nuget-debug\analyzers\dotnet\cs\&quot; &gt; nul" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
-        <Exec Command="if exist &quot;$(TargetPath)&quot; copy &quot;$(TargetDir)Helper.pdb&quot; &quot;$(SolutionDir)nuget-debug\analyzers\dotnet\cs\&quot; &gt; nul" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
         <Exec Command="if exist &quot;$(TargetPath)&quot; copy &quot;$(TargetDir)Method.Contracts.dll&quot; &quot;$(SolutionDir)nuget-debug\analyzers\dotnet\cs\&quot; &gt; nul" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
         <Exec Command="if not exist &quot;$(SolutionDir)nuget\analyzers\dotnet\cs&quot; mkdir &quot;$(SolutionDir)nuget\analyzers\dotnet\cs&quot;" Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
         <Exec Command="if exist &quot;$(TargetPath)&quot; copy &quot;$(TargetDir)$(ProjectName).dll&quot; &quot;$(SolutionDir)nuget\analyzers\dotnet\cs\&quot; &gt; nul" Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
         <Exec Command="if exist &quot;$(TargetPath)&quot; copy &quot;$(TargetDir)$(ProjectName).xml&quot; &quot;$(SolutionDir)nuget\analyzers\dotnet\cs\&quot; &gt; nul" Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
-        <Exec Command="if exist &quot;$(TargetPath)&quot; copy &quot;$(TargetDir)Helper.dll&quot; &quot;$(SolutionDir)nuget\analyzers\dotnet\cs\&quot; &gt; nul" Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
         <Exec Command="if exist &quot;$(TargetPath)&quot; copy &quot;$(TargetDir)Method.Contracts.dll&quot; &quot;$(SolutionDir)nuget\analyzers\dotnet\cs\&quot; &gt; nul" Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
     </Target>
 

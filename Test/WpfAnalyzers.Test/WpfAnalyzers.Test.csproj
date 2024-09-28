@@ -49,7 +49,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\Helper\Helper.csproj" Aliases="Helper" />
         <ProjectReference Include="..\..\WpfAnalyzers\WpfAnalyzers.csproj" Aliases="Analyzers" />
     </ItemGroup>
     

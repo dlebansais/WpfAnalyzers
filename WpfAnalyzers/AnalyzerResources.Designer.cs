@@ -86,5 +86,32 @@ namespace WpfAnalyzers {
                 return ResourceManager.GetString("WPFA1001AnalyzerTitle", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Access to an object is forbidden in this thread..
+        /// </summary>
+        internal static string WPFA1002AnalyzerDescription {
+            get {
+                return ResourceManager.GetString("WPFA1002AnalyzerDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Access to &apos;{0}&apos; is forbidden in this thread.
+        /// </summary>
+        internal static string WPFA1002AnalyzerMessageFormat {
+            get {
+                return ResourceManager.GetString("WPFA1002AnalyzerMessageFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Access to object is forbidden.
+        /// </summary>
+        internal static string WPFA1002AnalyzerTitle {
+            get {
+                return ResourceManager.GetString("WPFA1002AnalyzerTitle", resourceCulture);
+            }
+        }
     }
 }
