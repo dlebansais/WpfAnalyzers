@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using PersistentAnalysis;
 
 /// <summary>
 /// Analyzer for rule WPFA1001: missing InitializeComponent.
@@ -49,6 +50,8 @@ public class WPFA1001MissingInitializeComponents : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
 
         context.RegisterSyntaxNodeAction(AnalyzeNode, SyntaxKind.ConstructorDeclaration);
+
+        _ = Persist.Init();
     }
 
     private void AnalyzeNode(SyntaxNodeAnalysisContext context)

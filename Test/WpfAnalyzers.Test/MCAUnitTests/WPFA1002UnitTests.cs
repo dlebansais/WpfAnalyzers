@@ -9,7 +9,8 @@ using Microsoft.CodeAnalysis.Testing;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VerifyCS = CSharpAnalyzerVerifier<Analyzers.WpfAnalyzers.WPFA1002AccessToObjectIsForbidden>;
 
-[TestClass, Ignore("Not working yet")]
+[TestClass]
+[Ignore("Not working yet")]
 public partial class WPFA1002UnitTests
 {
     [TestMethod]

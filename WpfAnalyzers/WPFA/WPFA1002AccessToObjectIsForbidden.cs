@@ -12,6 +12,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.FindSymbols;
+using PersistentAnalysis;
 
 /// <summary>
 /// Analyzer for rule WPFA1002: access to object is forbidden.

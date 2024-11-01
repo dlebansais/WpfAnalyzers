@@ -9,6 +9,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WpfAnalyzers.Test", "Test\W
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PreBuild", "PreBuild\PreBuild.csproj", "{0B90EA49-21E8-4A02-AD29-21B007983AAB}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GenerateNodeClones", "GenerateNodeClones\GenerateNodeClones.csproj", "{2413E31F-0B17-44F0-8295-9D8CCC1EE230}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NodeClone", "NodeClone\NodeClone.csproj", "{488D5434-5544-421A-BB8F-3B3BAF74CC2B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -27,6 +31,14 @@ Global
 		{0B90EA49-21E8-4A02-AD29-21B007983AAB}.Debug|x64.Build.0 = Debug|x64
 		{0B90EA49-21E8-4A02-AD29-21B007983AAB}.Release|x64.ActiveCfg = Release|x64
 		{0B90EA49-21E8-4A02-AD29-21B007983AAB}.Release|x64.Build.0 = Release|x64
+		{2413E31F-0B17-44F0-8295-9D8CCC1EE230}.Debug|x64.ActiveCfg = Debug|x64
+		{2413E31F-0B17-44F0-8295-9D8CCC1EE230}.Debug|x64.Build.0 = Debug|x64
+		{2413E31F-0B17-44F0-8295-9D8CCC1EE230}.Release|x64.ActiveCfg = Release|x64
+		{2413E31F-0B17-44F0-8295-9D8CCC1EE230}.Release|x64.Build.0 = Release|x64
+		{488D5434-5544-421A-BB8F-3B3BAF74CC2B}.Debug|x64.ActiveCfg = Debug|x64
+		{488D5434-5544-421A-BB8F-3B3BAF74CC2B}.Debug|x64.Build.0 = Debug|x64
+		{488D5434-5544-421A-BB8F-3B3BAF74CC2B}.Release|x64.ActiveCfg = Release|x64
+		{488D5434-5544-421A-BB8F-3B3BAF74CC2B}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
