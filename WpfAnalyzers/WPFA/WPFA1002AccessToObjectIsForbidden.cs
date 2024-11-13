@@ -2,6 +2,7 @@
 
 namespace WpfAnalyzers;
 
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
@@ -11,7 +12,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using Microsoft.CodeAnalysis.FindSymbols;
 using PersistentAnalysis;
 
 /// <summary>
@@ -42,7 +42,7 @@ public class WPFA1002AccessToObjectIsForbidden : DiagnosticAnalyzer
     /// <summary>
     /// Gets the list of supported diagnostic.
     /// </summary>
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return [Rule]; } }
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     /// <summary>
     /// Initializes the rule analyzer.
@@ -56,6 +56,8 @@ public class WPFA1002AccessToObjectIsForbidden : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
 
         context.RegisterSyntaxNodeAction(AnalyzeNode, SyntaxKind.SimpleMemberAccessExpression);
+
+        _ = Persist.Init(TimeSpan.Zero, string.Empty);
     }
 
     private void AnalyzeNode(SyntaxNodeAnalysisContext context)
@@ -68,6 +70,12 @@ public class WPFA1002AccessToObjectIsForbidden : DiagnosticAnalyzer
 
     private void AnalyzeVerifiedNode(SyntaxNodeAnalysisContext context, MemberAccessExpressionSyntax memberAccessExpression, IAnalysisAssertion[] analysisAssertions)
     {
+        if (context.Node.SyntaxTree.GetRoot() is CompilationUnitSyntax Root)
+        {
+            var RootClone = NodeClone.Cloner.Clone<NodeClone.CompilationUnitSyntax, CompilationUnitSyntax>(Root, null);
+            _ = Persist.Update(RootClone);
+        }
+
         if (memberAccessExpression.Expression is not IdentifierNameSyntax ControlName || memberAccessExpression.Name is not IdentifierNameSyntax PropertyName)
             return;
 

@@ -36,7 +36,7 @@ public class WPFA1001MissingInitializeComponents : DiagnosticAnalyzer
     /// <summary>
     /// Gets the list of supported diagnostic.
     /// </summary>
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return [Rule]; } }
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     /// <summary>
     /// Initializes the rule analyzer.
@@ -50,8 +50,6 @@ public class WPFA1001MissingInitializeComponents : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
 
         context.RegisterSyntaxNodeAction(AnalyzeNode, SyntaxKind.ConstructorDeclaration);
-
-        _ = Persist.Init();
     }
 
     private void AnalyzeNode(SyntaxNodeAnalysisContext context)
