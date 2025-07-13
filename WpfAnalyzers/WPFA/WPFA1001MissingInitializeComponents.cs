@@ -6,7 +6,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using PersistentAnalysis;
 
 /// <summary>
 /// Analyzer for rule WPFA1001: missing InitializeComponent.

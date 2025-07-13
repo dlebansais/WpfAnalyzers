@@ -4,15 +4,11 @@ namespace WpfAnalyzers;
 
 using System;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using Contracts;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using PersistentAnalysis;
 
 /// <summary>
 /// Analyzer for rule WPFA1002: access to object is forbidden.
@@ -57,7 +53,7 @@ public class WPFA1002AccessToObjectIsForbidden : DiagnosticAnalyzer
 
         context.RegisterSyntaxNodeAction(AnalyzeNode, SyntaxKind.SimpleMemberAccessExpression);
 
-        _ = Persist.Init(TimeSpan.Zero, string.Empty);
+        // _ = Persist.Init(TimeSpan.Zero, string.Empty);
     }
 
     private void AnalyzeNode(SyntaxNodeAnalysisContext context)
@@ -70,10 +66,12 @@ public class WPFA1002AccessToObjectIsForbidden : DiagnosticAnalyzer
 
     private void AnalyzeVerifiedNode(SyntaxNodeAnalysisContext context, MemberAccessExpressionSyntax memberAccessExpression, IAnalysisAssertion[] analysisAssertions)
     {
-        if (context.Node.SyntaxTree.GetRoot() is CompilationUnitSyntax Root)
+        if (context.Node.SyntaxTree.GetRoot() is CompilationUnitSyntax /*Root*/)
         {
+            /*
             var RootClone = NodeClone.Cloner.Clone<NodeClone.CompilationUnitSyntax, CompilationUnitSyntax>(Root, null);
             _ = Persist.Update(RootClone);
+            */
         }
 
         if (memberAccessExpression.Expression is not IdentifierNameSyntax ControlName || memberAccessExpression.Name is not IdentifierNameSyntax PropertyName)
@@ -127,6 +125,10 @@ public class WPFA1002AccessToObjectIsForbidden : DiagnosticAnalyzer
 
     private static ThreadType GetConstructorCallingThread(SyntaxNodeAnalysisContext context, ConstructorDeclarationSyntax constructorDeclaration)
     {
+        if (context.SemanticModel.GetDeclaredSymbol(constructorDeclaration, context.CancellationToken) is IMethodSymbol)
+        {
+        }
+
         return ThreadType.Unknown;
     }
 

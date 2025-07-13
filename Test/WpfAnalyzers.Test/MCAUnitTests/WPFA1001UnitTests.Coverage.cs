@@ -1,4 +1,6 @@
-﻿namespace WpfAnalyzers.Test;
+﻿#pragma warning disable CA1812
+
+namespace WpfAnalyzers.Test;
 
 extern alias Analyzers;
 
@@ -7,7 +9,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VerifyCS = CSharpAnalyzerVerifier<Analyzers.WpfAnalyzers.WPFA1001MissingInitializeComponents>;
 
-public partial class WPFA1001UnitTests
+internal partial class WPFA1001UnitTests
 {
     [TestMethod]
     public async Task CoverageDirective_NoDiagnostic()

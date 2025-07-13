@@ -11,7 +11,7 @@ using VerifyCS = CSharpAnalyzerVerifier<Analyzers.WpfAnalyzers.WPFA1002AccessToO
 
 [TestClass]
 //[Ignore("Not working yet")]
-public partial class WPFA1002UnitTests
+internal partial class WPFA1002UnitTests
 {
     [TestMethod]
     public async Task NotUiThreadSet_Diagnostic()

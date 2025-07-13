@@ -43,7 +43,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="IDisposableAnalyzers" Version="4.0.8">
+        <PackageReference Include="dlebansais.IDisposableAnalyzers" Version="4.0.8.10">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
@@ -86,15 +86,6 @@
         <PackageReference Include="dlebansais.ProcessCommunication" Version="1.1.0" Condition="'$(Configuration)|$(Platform)'!='Debug|x64'" />
         <PackageReference Include="dlebansais.DebugLogging-Debug" Version="1.0.2" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
         <PackageReference Include="dlebansais.DebugLogging" Version="1.0.2" Condition="'$(Configuration)|$(Platform)'!='Debug|x64'" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <Reference Include="PersistentAnalysis">
-            <HintPath>..\..\PersistentAnalysis\PersistentAnalysis\bin\x64\$(Configuration)\$(TargetFramework)\PersistentAnalysis.dll</HintPath>
-        </Reference>
-        <Reference Include="NodeClone">
-            <HintPath>..\..\PersistentAnalysis\NodeClone\bin\x64\$(Configuration)\$(TargetFramework)\NodeClone.dll</HintPath>
-        </Reference>
     </ItemGroup>
 
     <ItemGroup>

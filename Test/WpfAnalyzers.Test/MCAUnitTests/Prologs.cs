@@ -1,6 +1,6 @@
 ﻿namespace WpfAnalyzers.Test;
 
-public static class Prologs
+internal static class Prologs
 {
     public const string Default = @"
 using System;

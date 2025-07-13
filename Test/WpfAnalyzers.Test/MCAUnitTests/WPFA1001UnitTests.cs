@@ -10,7 +10,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VerifyCS = CSharpAnalyzerVerifier<Analyzers.WpfAnalyzers.WPFA1001MissingInitializeComponents>;
 
 [TestClass]
-public partial class WPFA1001UnitTests
+internal partial class WPFA1001UnitTests
 {
     [TestMethod]
     public async Task NoInitializeComponent_Diagnostic()
