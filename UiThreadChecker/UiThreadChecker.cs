@@ -48,7 +48,7 @@ public class UiThreadChecker
             string classPath = entry.Value;
 
             await foreach (var caller in CallSiteLocator.LocateVariableCallers(project, variableDeclarator, classPath))
-                uncheckedCallers.Add(new CallerInfo(caller, 0));
+                uncheckedCallers.Add(new CallerInfo(variableDeclarator.Identifier.Text, caller, 0));
         }
 
         CallSiteLocator.InitReduceCallSite(compilation);
@@ -65,7 +65,7 @@ public class UiThreadChecker
                     var newCallers = (await SymbolFinder.FindCallersAsync(callSiteInfo.Caller.CallingSymbol, solution).ConfigureAwait(false)).ToList();
                     if (newCallers.Count == 0)
                     {
-                        NoCallerEvent?.Invoke(this, new NoCallerEventArgs(callSiteInfo.Caller.CallingSymbol.Name));
+                        NoCallerEvent?.Invoke(this, new NoCallerEventArgs(callSiteInfo.VariableName, callSiteInfo.Caller.CallingSymbol.Name));
                     }
                     else
                     {
@@ -73,16 +73,16 @@ public class UiThreadChecker
                         {
                             // If the caller is an override, it calls itself, a case we should ignore.
                             if (!SymbolEqualityComparer.Default.Equals(newCaller.CallingSymbol, callSiteInfo.Caller.CallingSymbol))
-                                uncheckedCallers.Insert(0, new CallerInfo(newCaller, callSiteInfo.Indentation + 1));
+                                uncheckedCallers.Insert(0, new CallerInfo(callSiteInfo.VariableName, newCaller, callSiteInfo.Indentation + 1));
                         }
                     }
 
                     break;
                 case ResolvedCallType.Invalid:
-                    BadCallerEvent?.Invoke(this, new BadCallerEventArgs(callSiteInfo.Caller.CallingSymbol.Name, callSiteInfo.LineNumber));
+                    BadCallerEvent?.Invoke(this, new BadCallerEventArgs(callSiteInfo.VariableName, callSiteInfo.Caller.CallingSymbol.Name, callSiteInfo.LineNumber));
                     break;
                 case ResolvedCallType.Unknown:
-                    UnknownCallerEvent?.Invoke(this, new UnknownCallerEventArgs(callSiteInfo.Caller.CallingSymbol.Name, callSiteInfo.LineNumber));
+                    UnknownCallerEvent?.Invoke(this, new UnknownCallerEventArgs(callSiteInfo.VariableName, callSiteInfo.Caller.CallingSymbol.Name, callSiteInfo.LineNumber));
                     break;
             }
         }

@@ -11,4 +11,6 @@ internal class CallSiteInfo
     public int Indentation { get; init; }
 
     public int LineNumber { get; init; } = -1;
+
+    public string VariableName { get; init; } = string.Empty;
 }

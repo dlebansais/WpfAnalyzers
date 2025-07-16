@@ -57,6 +57,7 @@ internal static class CallSiteLocator
     {
         CallerInfo uncheckedCallerInfo = uncheckedCallers.First();
         uncheckedCallers.RemoveAt(0);
+        string variableName = uncheckedCallerInfo.VariableName;
         SymbolCallerInfo uncheckedCaller = uncheckedCallerInfo.SymbolCaller;
         int indentation = uncheckedCallerInfo.Indentation;
 
@@ -115,6 +116,7 @@ internal static class CallSiteLocator
                         ResolvedCallType = ResolvedCallType.Invalid,
                         Caller = uncheckedCaller,
                         LineNumber = lineSpan.StartLinePosition.Line + 1,
+                        VariableName = variableName,
                     };
                 }
             }
@@ -126,6 +128,7 @@ internal static class CallSiteLocator
                 LineNumber = rootCall is not null
                     ? rootCall.GetLocation().GetLineSpan().StartLinePosition.Line
                     : -1,
+                VariableName = variableName,
             };
         }
 

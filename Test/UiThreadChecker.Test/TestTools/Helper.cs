@@ -15,16 +15,18 @@ internal static class Helper
         UiThreadChecker uiThreadChecker = new();
         uiThreadChecker.NoCallerEvent += (sender, e) =>
         {
+            string message = $"No caller found for {e.MethodName}  while checking ' {e.VariableName} '.";
+
             if (checkContext.AssertNoCaller)
-                Assert.Fail($"No caller found for {e.Name}");
+                Assert.Fail(message);
             else
-                Console.WriteLine($"No caller found for {e.Name}");
+                Console.WriteLine(message);
 
             checkContext.NoCallerCount++;
         };
         uiThreadChecker.BadCallerEvent += (sender, e) =>
         {
-            string message = $"Bad caller found in {e.Name}{(e.LineNumber > 0 ? $", line {e.LineNumber}" : string.Empty)}";
+            string message = $"Bad caller found in {e.MethodName}{(e.LineNumber > 0 ? $", line {e.LineNumber}" : string.Empty)}, while checking '{e.VariableName}'.";
 
             if (checkContext.AssertBadCaller)
                 Assert.Fail(message);
@@ -35,7 +37,7 @@ internal static class Helper
         };
         uiThreadChecker.UnknownCallerEvent += (sender, e) =>
         {
-            string message = $"Unknown caller found for {e.Name}{(e.LineNumber > 0 ? $", line {e.LineNumber}" : string.Empty)}";
+            string message = $"Unknown caller found for {e.MethodName}{(e.LineNumber > 0 ? $", line {e.LineNumber}" : string.Empty)}, while checking '{e.VariableName}'.";
 
             Assert.Fail(message);
         };

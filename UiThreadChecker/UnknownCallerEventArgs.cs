@@ -2,8 +2,9 @@
 
 using System;
 
-public class UnknownCallerEventArgs(string name, int lineNumber) : EventArgs
+public class UnknownCallerEventArgs(string variableName, string methodName, int lineNumber) : EventArgs
 {
-    public string Name { get; } = name;
+    public string VariableName { get; } = variableName;
+    public string MethodName { get; } = methodName;
     public int LineNumber { get; } = lineNumber;
 }
