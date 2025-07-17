@@ -3,11 +3,13 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Markup;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FindSymbols;
@@ -46,12 +48,16 @@ internal static class CallSiteLocator
     {
         ComponentConnectorConnect = GetComponentConnectorConnectSymbol(compilation);
         VisualTypeSymbol = GetVisualTypeSymbol(compilation);
-        TaskRunSymbol = GetTaskRunSymbol(compilation);
+        TaskRunSymbols = GetTaskRunSymbols(compilation);
+        (DispatcherInvokeSymbols, DispatcherBeginInvokeSymbols, DispatcherInvokeAsyncSymbols) = GetDispatcherSymbols(compilation);
     }
 
     private static IMethodSymbol? ComponentConnectorConnect;
     private static ITypeSymbol? VisualTypeSymbol;
-    private static IMethodSymbol? TaskRunSymbol;
+    private static ImmutableArray<IMethodSymbol> TaskRunSymbols = [];
+    private static ImmutableArray<IMethodSymbol> DispatcherInvokeSymbols = [];
+    private static ImmutableArray<IMethodSymbol> DispatcherBeginInvokeSymbols = [];
+    private static ImmutableArray<IMethodSymbol> DispatcherInvokeAsyncSymbols = [];
 
     public static async Task<CallSiteInfo> ReduceCallSite(Solution solution, Compilation compilation, List<CallerInfo> uncheckedCallers)
     {
@@ -106,18 +112,18 @@ internal static class CallSiteLocator
                 var typeInfo = compilation.GetSemanticModel(parenthesizedLambdaExpression.SyntaxTree).GetTypeInfo(parenthesizedLambdaExpression);
                 if (typeInfo.ConvertedType is ITypeSymbol &&
                     parenthesizedLambdaExpression.Ancestors().OfType<InvocationExpressionSyntax>().FirstOrDefault() is InvocationExpressionSyntax invocationExpression &&
-                    compilation.GetSemanticModel(invocationExpression.SyntaxTree).GetSymbolInfo(invocationExpression).Symbol is ISymbol invokedSymbol &&
-                    TaskRunSymbol is not null &&
-                    SymbolEqualityComparer.Default.Equals(invokedSymbol, TaskRunSymbol))
+                    compilation.GetSemanticModel(invocationExpression.SyntaxTree).GetSymbolInfo(invocationExpression).Symbol is ISymbol invokedSymbol)
                 {
-                    var lineSpan = parenthesizedLambdaExpression.GetLocation().GetLineSpan();
-                    return new CallSiteInfo()
-                    {
-                        ResolvedCallType = ResolvedCallType.Invalid,
-                        Caller = uncheckedCaller,
-                        LineNumber = lineSpan.StartLinePosition.Line + 1,
-                        VariableName = variableName,
-                    };
+                    CallSiteInfo? result;
+
+                    if (IsInvalidCallSite(TaskRunSymbols, invokedSymbol, parenthesizedLambdaExpression, uncheckedCaller, variableName, out result))
+                        return result;
+                    if (IsTerminalCallSiteInfo(DispatcherInvokeSymbols, invokedSymbol, out result))
+                        return result;
+                    if (IsTerminalCallSiteInfo(DispatcherBeginInvokeSymbols, invokedSymbol, out result))
+                        return result;
+                    if (IsTerminalCallSiteInfo(DispatcherInvokeAsyncSymbols, invokedSymbol, out result))
+                        return result;
                 }
             }
 
@@ -174,13 +180,24 @@ internal static class CallSiteLocator
         return visualTypeSymbol;
     }
 
-    private static IMethodSymbol GetTaskRunSymbol(Compilation compilation)
+    private static ImmutableArray<IMethodSymbol> GetTaskRunSymbols(Compilation compilation)
     {
         Type taskType = typeof(Task);
         INamedTypeSymbol taskTypeSymbol = compilation.GetTypeByMetadataName(taskType.FullName!)!;
-        IMethodSymbol taskRun = taskTypeSymbol.GetMembers(nameof(Task.Run)).OfType<IMethodSymbol>().First();
+        ImmutableArray<IMethodSymbol> taskRun = [.. taskTypeSymbol.GetMembers(nameof(Task.Run)).OfType<IMethodSymbol>()];
 
         return taskRun;
+    }
+
+    private static (ImmutableArray<IMethodSymbol>, ImmutableArray<IMethodSymbol>, ImmutableArray<IMethodSymbol>) GetDispatcherSymbols(Compilation compilation)
+    {
+        Type dispatcherType = typeof(Dispatcher);
+        INamedTypeSymbol dispatcherTypeSymbol = compilation.GetTypeByMetadataName(dispatcherType.FullName!)!;
+        ImmutableArray<IMethodSymbol> dispatcherInvoke = [..dispatcherTypeSymbol.GetMembers(nameof(Dispatcher.Invoke)).OfType<IMethodSymbol>()];
+        ImmutableArray<IMethodSymbol> dispatcherBeginInvoke = [..dispatcherTypeSymbol.GetMembers(nameof(Dispatcher.BeginInvoke)).OfType<IMethodSymbol>()];
+        ImmutableArray<IMethodSymbol> dispatcherInvokeAsync = [..dispatcherTypeSymbol.GetMembers(nameof(Dispatcher.InvokeAsync)).OfType<IMethodSymbol>()];
+
+        return (dispatcherInvoke, dispatcherBeginInvoke, dispatcherInvokeAsync);
     }
 
     private static bool IsImplementationOf(IMethodSymbol candidate, IMethodSymbol interfaceMethod)
@@ -264,5 +281,66 @@ internal static class CallSiteLocator
         }
 
         return null;
+    }
+
+    private static bool IsInvalidCallSite(ImmutableArray<IMethodSymbol> methodSymbols,
+                                          ISymbol invokedSymbol,
+                                          ParenthesizedLambdaExpressionSyntax parenthesizedLambdaExpression,
+                                          SymbolCallerInfo uncheckedCaller,
+                                          string variableName,
+                                          [NotNullWhen(true)] out CallSiteInfo? result)
+    {
+        if (methodSymbols.Any(methodSymbol => IsMethodSymbolEqual(methodSymbol, invokedSymbol)))
+        {
+            var lineSpan = parenthesizedLambdaExpression.GetLocation().GetLineSpan();
+            result = new CallSiteInfo()
+            {
+                ResolvedCallType = ResolvedCallType.Invalid,
+                Caller = uncheckedCaller,
+                LineNumber = lineSpan.StartLinePosition.Line + 1,
+                VariableName = variableName,
+            };
+
+            return true;
+        }
+
+        result = null;
+        return false;
+    }
+
+    private static bool IsTerminalCallSiteInfo(ImmutableArray<IMethodSymbol> methodSymbols,
+                                               ISymbol invokedSymbol,
+                                               [NotNullWhen(true)] out CallSiteInfo? result)
+    {
+        if (methodSymbols.Any(methodSymbol => IsMethodSymbolEqual(methodSymbol, invokedSymbol)))
+        {
+            result = new CallSiteInfo() { ResolvedCallType = ResolvedCallType.Terminal };
+            return true;
+        }
+
+        result = null;
+        return false;
+    }
+
+    private static bool IsMethodSymbolEqual(IMethodSymbol methodSymbol, ISymbol symbol)
+    {
+        if (symbol is IMethodSymbol otherMethodSymbol)
+        {
+            if (!methodSymbol.IsGenericMethod &&
+                !otherMethodSymbol.IsGenericMethod &&
+                SymbolEqualityComparer.Default.Equals(otherMethodSymbol, methodSymbol))
+            {
+                return true;
+            }
+
+            if (methodSymbol.IsGenericMethod &&
+                otherMethodSymbol.IsGenericMethod &&
+                SymbolEqualityComparer.Default.Equals(otherMethodSymbol.ConstructedFrom, methodSymbol.ConstructedFrom))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -32,21 +32,28 @@ public partial class ValidCalls
     [Test]
     public async Task AppOneNamedControlCallInConstructor()
     {
-        CheckContext checkContext = new() { AssertNoCaller = false, AssertBadCaller = true };
+        CheckContext checkContext = new() { AssertNoCaller = true, AssertBadCaller = true };
         await Helper.CheckSolutionAsync("Valid-OneNamedControlCallInConstructor", checkContext);
     }
 
     [Test]
     public async Task AppOneNamedControlCallInEventHandler()
     {
-        CheckContext checkContext = new() { AssertNoCaller = false, AssertBadCaller = true };
+        CheckContext checkContext = new() { AssertNoCaller = true, AssertBadCaller = true };
         await Helper.CheckSolutionAsync("Valid-OneNamedControlCallInEventHandler", checkContext);
     }
 
     [Test]
     public async Task AppOneNamedControlCallInOverride()
     {
-        CheckContext checkContext = new() { AssertNoCaller = false, AssertBadCaller = true };
+        CheckContext checkContext = new() { AssertNoCaller = true, AssertBadCaller = true };
         await Helper.CheckSolutionAsync("Valid-OneNamedControlCallInOverride", checkContext);
+    }
+
+    [Test]
+    public async Task AppOneNamedControlCallInDispatcher()
+    {
+        CheckContext checkContext = new() { AssertNoCaller = true, AssertBadCaller = true };
+        await Helper.CheckSolutionAsync("Valid-OneNamedControlCallInDispatcher", checkContext);
     }
 }
