@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UiThreadChecker", "UiThread
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UiThreadChecker.Test", "Test\UiThreadChecker.Test\UiThreadChecker.Test.csproj", "{AECC8EAB-A232-FBA9-8C7C-A3AA43940F5C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfCrashDemo", "WpfCrashDemo\WpfCrashDemo.csproj", "{3E53A84D-1BF5-4BF0-A287-20BF317BACE0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -45,6 +47,10 @@ Global
 		{AECC8EAB-A232-FBA9-8C7C-A3AA43940F5C}.Debug|x64.Build.0 = Debug|x64
 		{AECC8EAB-A232-FBA9-8C7C-A3AA43940F5C}.Release|x64.ActiveCfg = Release|x64
 		{AECC8EAB-A232-FBA9-8C7C-A3AA43940F5C}.Release|x64.Build.0 = Release|x64
+		{3E53A84D-1BF5-4BF0-A287-20BF317BACE0}.Debug|x64.ActiveCfg = Debug|x64
+		{3E53A84D-1BF5-4BF0-A287-20BF317BACE0}.Debug|x64.Build.0 = Debug|x64
+		{3E53A84D-1BF5-4BF0-A287-20BF317BACE0}.Release|x64.ActiveCfg = Release|x64
+		{3E53A84D-1BF5-4BF0-A287-20BF317BACE0}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
