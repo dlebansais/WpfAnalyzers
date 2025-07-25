@@ -7,6 +7,7 @@
         <Grid.RowDefinitions>
             <RowDefinition/>
             <RowDefinition/>
+            <RowDefinition/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition/>
@@ -21,14 +22,22 @@
             <Grid x:Name="testGrid2" Background="LightCoral" />
             <Button Width="150" Height="25" Click="OnButtonClick2" Content="Click Me (crash)" />
         </Grid>
+        <Grid Grid.Row="2" Grid.Column="0" Width="200" Height="40" Margin="5">
+            <Grid x:Name="testGrid3" Background="LightCoral" />
+            <Button Width="150" Height="25" Click="OnButtonClick3" Content="Click Me (crash)" />
+        </Grid>
         <ItemsControl Grid.Row="0" Grid.Column="2" ItemsSource="{Binding Items3}" VerticalAlignment="Center" />
         <Grid Grid.Row="0" Grid.Column="1" Width="200" Height="40" Margin="5">
             <Grid Background="LightGreen" />
-            <Button Width="150" Height="25" Click="OnButtonClick3" Content="Click Me (safe)" />
+            <Button Width="150" Height="25" Click="OnButtonClick4" Content="Click Me (safe)" />
         </Grid>
         <Grid Grid.Row="1" Grid.Column="1" Width="200" Height="40" Margin="5">
             <Grid Background="LightCoral" />
-            <Button Width="150" Height="25" Click="OnButtonClick4" Content="Click Me (crash)" />
+            <Button Width="150" Height="25" Click="OnButtonClick5" Content="Click Me (crash)" />
+        </Grid>
+        <Grid Grid.Row="2" Grid.Column="1" Width="200" Height="40" Margin="5">
+            <Grid Background="LightCoral" />
+            <Button Width="150" Height="25" Click="OnButtonClick6" Content="Click Me (crash)" />
         </Grid>
         <ItemsControl Grid.Row="1" Grid.Column="2" ItemsSource="{Binding Items4}" VerticalAlignment="Center" />
     </Grid>

@@ -17,25 +17,35 @@ public partial class MainWindow : Window
 
     private async void OnButtonClick1(object sender, RoutedEventArgs e)
     {
-        await OnControlButtonClick(testGrid1, continueOnCapturedContext: true);
+        await OnControlButtonClickOutsideTaskRun(testGrid1, continueOnCapturedContext: true);
     }
 
     private async void OnButtonClick2(object sender, RoutedEventArgs e)
     {
-        await OnControlButtonClick(testGrid2, continueOnCapturedContext: false);
+        await OnControlButtonClickOutsideTaskRun(testGrid2, continueOnCapturedContext: false);
     }
 
     private async void OnButtonClick3(object sender, RoutedEventArgs e)
     {
-        await OnCollectionButtonClick(Items3, continueOnCapturedContext: true);
+        await OnControlButtonClickInsideTaskRun(testGrid2);
     }
 
     private async void OnButtonClick4(object sender, RoutedEventArgs e)
     {
-        await OnCollectionButtonClick(Items4, continueOnCapturedContext: false);
+        await OnCollectionButtonClickOutsideTaskRun(Items3, continueOnCapturedContext: true);
     }
 
-    private async Task OnControlButtonClick(Grid grid, bool continueOnCapturedContext)
+    private async void OnButtonClick5(object sender, RoutedEventArgs e)
+    {
+        await OnCollectionButtonClickOutsideTaskRun(Items4, continueOnCapturedContext: false);
+    }
+
+    private async void OnButtonClick6(object sender, RoutedEventArgs e)
+    {
+        await OnCollectionButtonClickInsideTaskRun(Items4);
+    }
+
+    private async Task OnControlButtonClickOutsideTaskRun(Grid grid, bool continueOnCapturedContext)
     {
         await Task.Run(async () =>
         {
@@ -45,7 +55,17 @@ public partial class MainWindow : Window
         grid.Visibility = Visibility.Collapsed;
     }
 
-    private async Task OnCollectionButtonClick(ObservableCollection<string> items, bool continueOnCapturedContext)
+    private async Task OnControlButtonClickInsideTaskRun(Grid grid)
+    {
+        await Task.Run(async () =>
+        {
+            await Task.Delay(1000);
+
+            grid.Visibility = Visibility.Collapsed;
+        }).ConfigureAwait(false);
+    }
+
+    private async Task OnCollectionButtonClickOutsideTaskRun(ObservableCollection<string> items, bool continueOnCapturedContext)
     {
         await Task.Run(async () =>
         {
@@ -53,6 +73,16 @@ public partial class MainWindow : Window
         }).ConfigureAwait(continueOnCapturedContext);
 
         items.Add("Clicked");
+    }
+
+    private async Task OnCollectionButtonClickInsideTaskRun(ObservableCollection<string> items)
+    {
+        await Task.Run(async () =>
+        {
+            await Task.Delay(1000);
+
+            items.Add("Clicked");
+        }).ConfigureAwait(false);
     }
 
     public ObservableCollection<string> Items3 { get; } = new();
