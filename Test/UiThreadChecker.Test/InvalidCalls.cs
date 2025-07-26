@@ -7,6 +7,15 @@ using NUnit.Framework;
 public partial class InvalidCalls
 {
     [Test]
+    public async Task AppOneNamedControlAfterConfigureAwait()
+    {
+        CheckContext checkContext = new() { AssertNoCaller = true, AssertBadCaller = false };
+        await Helper.CheckSolutionAsync("Invalid-OneNamedControlAfterConfigureAwait", checkContext);
+
+        Assert.That(checkContext.BadCallerCount, Is.GreaterThanOrEqualTo(1));
+    }
+
+    [Test]
     public async Task AppOneNamedControlCallInTaskRun()
     {
         CheckContext checkContext = new() { AssertNoCaller = true, AssertBadCaller = false };

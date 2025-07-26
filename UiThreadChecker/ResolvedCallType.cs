@@ -4,6 +4,7 @@ internal enum ResolvedCallType
 {
     Terminal,
     Continue,
-    Invalid,
+    InvalidCaller,
+    InvalidAwaiter,
     Unknown,
 }

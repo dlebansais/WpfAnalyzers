@@ -13,7 +13,7 @@ internal partial class Program
         };
         checker.BadCallerEvent += (sender, e) =>
         {
-            string message = $"Bad caller found in {e.MethodName}{(e.LineNumber > 0 ? $", line {e.LineNumber}" : string.Empty)}, while checking '{e.VariableName}'.";
+            string message = $"Bad {(e.IsAwaiter ? "awaiter" : "caller")} found in {e.MethodName}{(e.LineNumber > 0 ? $", line {e.LineNumber}" : string.Empty)}, while checking '{e.VariableName}'.";
             ConsoleDebug.Write(message, isError: true);
         };
         checker.UnknownCallerEvent += (sender, e) =>

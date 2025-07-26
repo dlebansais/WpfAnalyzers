@@ -75,13 +75,16 @@ internal static class CallSiteLocator
 
         Console.WriteLine($"{tab}Checking {uncheckedCaller.CallingSymbol}");
 
-        if (IsTerminalCallSite(compilation, uncheckedCaller))
-            return new CallSiteInfo() { ResolvedCallType = ResolvedCallType.Terminal };
-
+        SyntaxNode? rootWithNoCaller = null;
+        bool hasNoCaller = false;
         List<SyntaxNode> callerNodes = await GetCallSyntaxNodesAsync(uncheckedCaller, solution);
         foreach (var callerNode in callerNodes)
         {
-            SyntaxNode? rootCall = GetRootCall(callerNode);
+            (SyntaxNode? rootCall, List<SyntaxNode> visitedNodes) = GetRootCall(callerNode);
+
+            foreach (var visitedNode in visitedNodes)
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, visitedNode, out CallSiteInfo? result))
+                    return result;
 
             if (rootCall is PropertyDeclarationSyntax propertyDeclaration && uncheckedCaller.CallingSymbol is IPropertySymbol propertySymbol)
             {
@@ -127,18 +130,34 @@ internal static class CallSiteLocator
                 }
             }
 
+            rootWithNoCaller = rootCall;
+            hasNoCaller = true;
+            break;
+        }
+
+        if (IsTerminalCallSite(compilation, uncheckedCaller))
+            return new CallSiteInfo() { ResolvedCallType = ResolvedCallType.Terminal };
+
+        if (hasNoCaller)
+        {
             return new CallSiteInfo()
             {
                 ResolvedCallType = ResolvedCallType.Unknown,
                 Caller = uncheckedCaller,
-                LineNumber = rootCall is not null
-                    ? rootCall.GetLocation().GetLineSpan().StartLinePosition.Line
+                LineNumber = rootWithNoCaller is not null
+                    ? rootWithNoCaller.GetLocation().GetLineSpan().StartLinePosition.Line
                     : -1,
                 VariableName = variableName,
             };
         }
 
-        return new CallSiteInfo() { ResolvedCallType = ResolvedCallType.Continue, Caller = uncheckedCaller, Indentation = uncheckedCallerInfo.Indentation };
+        return new CallSiteInfo()
+        {
+            ResolvedCallType = ResolvedCallType.Continue,
+            Caller = uncheckedCaller,
+            Indentation = uncheckedCallerInfo.Indentation,
+            VariableName = variableName,
+        };
     }
 
     private static bool IsTerminalCallSite(Compilation compilation, SymbolCallerInfo caller)
@@ -257,30 +276,33 @@ internal static class CallSiteLocator
         return result;
     }
 
-    private static SyntaxNode? GetRootCall(SyntaxNode caller)
+    private static (SyntaxNode?, List<SyntaxNode>) GetRootCall(SyntaxNode caller)
     {
         SyntaxNode? node = caller;
+        List<SyntaxNode> visitedNodes = new();
 
         while (node is not null)
         {
+            visitedNodes.Add(node);
+
             switch (node)
             {
                 case ArrowExpressionClauseSyntax arrowExpression:
-                    return arrowExpression.Parent;
+                    return (arrowExpression.Parent, visitedNodes);
                 case AccessorDeclarationSyntax accessorDeclaration:
-                    return accessorDeclaration.Parent?.Parent;
+                    return (accessorDeclaration.Parent?.Parent, visitedNodes );
                 case ParenthesizedLambdaExpressionSyntax parenthesizedLambdaExpression:
-                    return parenthesizedLambdaExpression;
+                    return (parenthesizedLambdaExpression, visitedNodes );
                 case MethodDeclarationSyntax:
                 case ConstructorDeclarationSyntax:
-                    return node;
+                    return (node, visitedNodes);
                 default:
                     node = node.Parent;
                     break;
             }
         }
 
-        return null;
+        return (null, new());
     }
 
     private static bool IsInvalidCallSite(ImmutableArray<IMethodSymbol> methodSymbols,
@@ -295,7 +317,7 @@ internal static class CallSiteLocator
             var lineSpan = parenthesizedLambdaExpression.GetLocation().GetLineSpan();
             result = new CallSiteInfo()
             {
-                ResolvedCallType = ResolvedCallType.Invalid,
+                ResolvedCallType = ResolvedCallType.InvalidCaller,
                 Caller = uncheckedCaller,
                 LineNumber = lineSpan.StartLinePosition.Line + 1,
                 VariableName = variableName,
@@ -341,6 +363,119 @@ internal static class CallSiteLocator
             }
         }
 
+        return false;
+    }
+
+    private static bool IsConfigureAwaitFalse(Compilation compilation, string variableName, SymbolCallerInfo uncheckedCaller, SyntaxNode node, [NotNullWhen(true)] out CallSiteInfo? result)
+    {
+        switch (node)
+        {
+            case BlockSyntax blockSyntax:
+                foreach (var statement in blockSyntax.Statements)
+                {
+                    if (statement == node)
+                    {
+                        result = null;
+                        return false;
+                    }
+
+                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, statement, out result))
+                    {
+                        return true;
+                    }
+                }
+                break;
+            case IfStatementSyntax ifStatement:
+                if (ifStatement.Condition is ExpressionSyntax ifCondition && IsConfigureAwaitFalseExpression(compilation, variableName, uncheckedCaller, ifCondition, out result))
+                    return true;
+                break;
+
+            case WhileStatementSyntax whileStatement:
+                if (whileStatement.Condition is ExpressionSyntax whileCondition && IsConfigureAwaitFalseExpression(compilation, variableName, uncheckedCaller, whileCondition, out result))
+                    return true;
+                break;
+
+            case DoStatementSyntax doStatementSyntax:
+                if (doStatementSyntax.Condition is ExpressionSyntax doCondition && IsConfigureAwaitFalseExpression(compilation, variableName, uncheckedCaller, doCondition, out result))
+                    return true;
+                break;
+
+            case ForStatementSyntax forStatement:
+                if (forStatement.Declaration is VariableDeclarationSyntax variableDeclaration)
+                {
+                    foreach (var variableDeclarator in variableDeclaration.Variables)
+                        if (variableDeclarator.Initializer is EqualsValueClauseSyntax equalsValueClause && IsConfigureAwaitFalseExpression(compilation, variableName, uncheckedCaller, equalsValueClause.Value, out result))
+                            return true;
+                }
+                foreach (var initializer in forStatement.Initializers)
+                    if (IsConfigureAwaitFalseExpression(compilation, variableName, uncheckedCaller, initializer, out result))
+                        return true;
+                if (forStatement.Condition is ExpressionSyntax forCondition && IsConfigureAwaitFalseExpression(compilation, variableName, uncheckedCaller, forCondition, out result))
+                    return true;
+                break;
+            case ExpressionStatementSyntax expressionStatement:
+                if (IsConfigureAwaitFalseExpression(compilation, variableName, uncheckedCaller, expressionStatement.Expression, out result))
+                    return true;
+                break;
+        }
+
+        result = null;
+        return false;
+    }
+
+    private static bool IsConfigureAwaitFalseExpression(Compilation compilation, string variableName, SymbolCallerInfo uncheckedCaller, ExpressionSyntax expression, [NotNullWhen(true)] out CallSiteInfo? result)
+    {
+        switch (expression)
+        {
+            case AssignmentExpressionSyntax assignmentExpression:
+                if (IsConfigureAwaitFalseExpression(compilation, variableName, uncheckedCaller, assignmentExpression.Left, out result))
+                    return true;
+                if (IsConfigureAwaitFalseExpression(compilation, variableName, uncheckedCaller, assignmentExpression.Right, out result))
+                    return true;
+                break;
+            case BinaryExpressionSyntax binaryExpressionSyntax:
+                if (IsConfigureAwaitFalseExpression(compilation, variableName, uncheckedCaller, binaryExpressionSyntax.Left, out result))
+                    return true;
+                if (IsConfigureAwaitFalseExpression(compilation, variableName, uncheckedCaller, binaryExpressionSyntax.Right, out result))
+                    return true;
+                break;
+            case AwaitExpressionSyntax awaitExpression:
+                if (IsConfigureAwaitFalseAwaitExpression(compilation, variableName, uncheckedCaller, awaitExpression, out result))
+                    return true;
+                break;
+        }
+
+        result = null;
+        return false;
+    }
+
+    private static bool IsConfigureAwaitFalseAwaitExpression(Compilation compilation, string variableName, SymbolCallerInfo uncheckedCaller, AwaitExpressionSyntax awaitExpression, [NotNullWhen(true)] out CallSiteInfo? result)
+    {
+        SemanticModel semanticModel = compilation.GetSemanticModel(awaitExpression.SyntaxTree);
+        var typeInfo = semanticModel.GetTypeInfo(awaitExpression.Expression);
+        if (typeInfo.Type is INamedTypeSymbol namedTypeSymbol &&
+            namedTypeSymbol.Name == "ConfiguredTaskAwaitable" &&
+            namedTypeSymbol.ContainingNamespace.ToString() == "System.Runtime.CompilerServices")
+        {
+            if (awaitExpression.Expression is InvocationExpressionSyntax invocationExpression &&
+                invocationExpression.ArgumentList.Arguments.Count > 0 &&
+                invocationExpression.ArgumentList.Arguments[0].Expression is LiteralExpressionSyntax literalExpression &&
+                literalExpression.Token.Value is bool value &&
+                !value)
+            {
+                var lineSpan = literalExpression.GetLocation().GetLineSpan();
+                result = new CallSiteInfo()
+                {
+                    ResolvedCallType = ResolvedCallType.InvalidAwaiter,
+                    Caller = uncheckedCaller,
+                    LineNumber = lineSpan.StartLinePosition.Line + 1,
+                    VariableName = variableName,
+                };
+                return true;
+            }
+        }
+
+        result = null;
         return false;
     }
 }

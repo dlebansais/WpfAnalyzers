@@ -78,8 +78,11 @@ public class UiThreadChecker
                     }
 
                     break;
-                case ResolvedCallType.Invalid:
-                    BadCallerEvent?.Invoke(this, new BadCallerEventArgs(callSiteInfo.VariableName, callSiteInfo.Caller.CallingSymbol.Name, callSiteInfo.LineNumber));
+                case ResolvedCallType.InvalidCaller:
+                    BadCallerEvent?.Invoke(this, new BadCallerEventArgs(isAwaiter: false, callSiteInfo.VariableName, callSiteInfo.Caller.CallingSymbol.Name, callSiteInfo.LineNumber));
+                    break;
+                case ResolvedCallType.InvalidAwaiter:
+                    BadCallerEvent?.Invoke(this, new BadCallerEventArgs(isAwaiter: true, callSiteInfo.VariableName, callSiteInfo.Caller.CallingSymbol.Name, callSiteInfo.LineNumber));
                     break;
                 case ResolvedCallType.Unknown:
                     UnknownCallerEvent?.Invoke(this, new UnknownCallerEventArgs(callSiteInfo.VariableName, callSiteInfo.Caller.CallingSymbol.Name, callSiteInfo.LineNumber));
