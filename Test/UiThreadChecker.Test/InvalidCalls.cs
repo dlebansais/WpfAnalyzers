@@ -23,4 +23,13 @@ public partial class InvalidCalls
 
         Assert.That(checkContext.BadCallerCount, Is.EqualTo(1));
     }
+
+    [Test]
+    public async Task AppOneObservableCollectionAfterConfigureAwait()
+    {
+        CheckContext checkContext = new() { AssertNoCaller = true, AssertBadCaller = false };
+        await Helper.CheckSolutionAsync("Invalid-OneObservableCollectionAfterConfigureAwait", checkContext);
+
+        Assert.That(checkContext.BadCallerCount, Is.EqualTo(1));
+    }
 }

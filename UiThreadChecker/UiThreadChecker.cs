@@ -40,9 +40,9 @@ public class UiThreadChecker
     {
         Compilation compilation = await project.GetCompilationAsync().ConfigureAwait(false) ?? throw new InvalidOperationException();
 
-        Dictionary<VariableDeclaratorSyntax, string> namedVisuals = await MemberLocator.LocateWpfNamedVisuals(project).ConfigureAwait(false);
+        Dictionary<VariableDeclaratorSyntax, string> restrictedObjects = await MemberLocator.LocateWpfThreadRestrictedObjects(project).ConfigureAwait(false);
         List<CallerInfo> uncheckedCallers = [];
-        foreach (KeyValuePair<VariableDeclaratorSyntax, string> entry in namedVisuals)
+        foreach (KeyValuePair<VariableDeclaratorSyntax, string> entry in restrictedObjects)
         {
             VariableDeclaratorSyntax variableDeclarator = entry.Key;
             string classPath = entry.Value;

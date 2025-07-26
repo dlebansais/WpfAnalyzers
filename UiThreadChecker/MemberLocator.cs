@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -9,6 +10,17 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 internal static class MemberLocator
 {
+    public static async Task<Dictionary<VariableDeclaratorSyntax, string>> LocateWpfThreadRestrictedObjects(Project project)
+    {
+        Dictionary<VariableDeclaratorSyntax, string> result = new();
+        foreach (KeyValuePair<VariableDeclaratorSyntax, string> entry in await LocateWpfNamedVisuals(project))
+            _ = result.TryAdd(entry.Key, entry.Value);
+        foreach (KeyValuePair<VariableDeclaratorSyntax, string> entry in await LocateObservableCollections(project))
+            _ = result.TryAdd(entry.Key, entry.Value);
+
+        return result;
+    }
+
     public static async Task<Dictionary<VariableDeclaratorSyntax, string>> LocateWpfNamedVisuals(Project project)
     {
         Dictionary<VariableDeclaratorSyntax, string> namedVisuals = [];
@@ -85,6 +97,48 @@ internal static class MemberLocator
             }
         }
 
+        return false;
+    }
+
+    public static async Task<Dictionary<VariableDeclaratorSyntax, string>> LocateObservableCollections(Project project)
+    {
+        Dictionary<VariableDeclaratorSyntax, string> observableCollections = [];
+
+        foreach (Document document in project.Documents)
+        {
+            if (await document.GetSyntaxRootAsync() is SyntaxNode root &&
+                await document.GetSemanticModelAsync() is SemanticModel semanticModel)
+            {
+                IEnumerable<VariableDeclarationSyntax> variableDeclarations = root.DescendantNodes().OfType<VariableDeclarationSyntax>();
+
+                foreach (VariableDeclarationSyntax declaration in variableDeclarations)
+                {
+                    TypeInfo typeInfo = semanticModel.GetTypeInfo(declaration.Type);
+
+                    if (typeInfo.Type is ITypeSymbol typeSymbol && IsObservableCollection(typeSymbol))
+                    {
+                        foreach (var variable in declaration.Variables)
+                        {
+                            if (semanticModel.GetDeclaredSymbol(variable) is ISymbol variableInfo)
+                            {
+                                observableCollections.Add(variable, variableInfo.ContainingType.ToDisplayString());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return observableCollections;
+    }
+
+    private static bool IsObservableCollection(ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol is INamedTypeSymbol namedType)
+        {
+            return namedType.OriginalDefinition.ToDisplayString() ==
+                   "ObservableCollection<>";
+        }
         return false;
     }
 }

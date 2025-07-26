@@ -30,7 +30,7 @@ internal static class CallSiteLocator
                 if (classPath == symbolClassPath)
                 {
                     ImmutableArray<ISymbol> members = typeDeclaration.GetMembers();
-                    IFieldSymbol symbol = (IFieldSymbol)members.First(m => m.Name == variableDeclarator.Identifier.Text);
+                    ISymbol symbol = members.First(m => m.Name == variableDeclarator.Identifier.Text);
                     IEnumerable<SymbolCallerInfo> callers = await SymbolFinder.FindCallersAsync(symbol, project.Solution);
 
                     Console.WriteLine($"Found {callers.Count()} use(s) for field {variableDeclarator.Identifier.Text}");

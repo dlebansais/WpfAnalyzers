@@ -63,4 +63,11 @@ public partial class ValidCalls
         CheckContext checkContext = new() { AssertNoCaller = true, AssertBadCaller = true };
         await Helper.CheckSolutionAsync("Valid-OneNamedControlAfterConfigureAwait", checkContext);
     }
+
+    [Test]
+    public async Task AppOneObservableCollectionAfterConfigureAwait()
+    {
+        CheckContext checkContext = new() { AssertNoCaller = true, AssertBadCaller = true };
+        await Helper.CheckSolutionAsync("Valid-OneObservableCollectionAfterConfigureAwait", checkContext);
+    }
 }
