@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 
 [TestFixture]
+[Category("UiThreadChecker")]
 public partial class InvalidCalls
 {
     [Test]
