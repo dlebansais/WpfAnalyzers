@@ -4,7 +4,7 @@ setlocal
 
 call ..\Certification\set_tokens.bat
 
-set PROJECTNAME=WpfAnalyzers
+set PROJECTNAME=UiThreadChecker
 set TOKEN=%WPFANALYZERS_CODECOV_TOKEN%
 set TESTPROJECTNAME=UiThreadChecker.Test
 set PLATFORM=x64

@@ -18,12 +18,18 @@ public partial class MainWindow : Window
 
     public async Task TestControlMethod1()
     {
-        await Task.Run(() =>
-        {
-        }).ConfigureAwait(true);
+        _ = await TestControlMethod2().ConfigureAwait(true);
 
-        Items.Add("Test item");
+        testControl.Visibility = Visibility.Visible;
+
+        _ = await TestControlMethod2().ConfigureAwait(false);
     }
 
-    public ObservableCollection<string> Items { get; } = new();
+    public async Task TestControlMethod2()
+    {
+        _ = await Task.Run(() =>
+        {
+            return 42;
+        }).ConfigureAwait(false);
+    }
 }

@@ -10,20 +10,20 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 internal static class MemberLocator
 {
-    public static async Task<Dictionary<VariableDeclaratorSyntax, string>> LocateWpfThreadRestrictedObjects(Project project)
+    public static async Task<Dictionary<SyntaxToken, string>> LocateWpfThreadRestrictedObjects(Project project)
     {
-        Dictionary<VariableDeclaratorSyntax, string> result = new();
-        foreach (KeyValuePair<VariableDeclaratorSyntax, string> entry in await LocateWpfNamedVisuals(project))
+        Dictionary<SyntaxToken, string> result = new();
+        foreach (KeyValuePair<SyntaxToken, string> entry in await LocateWpfNamedVisuals(project))
             _ = result.TryAdd(entry.Key, entry.Value);
-        foreach (KeyValuePair<VariableDeclaratorSyntax, string> entry in await LocateObservableCollections(project))
+        foreach (KeyValuePair<SyntaxToken, string> entry in await LocateObservableCollections(project))
             _ = result.TryAdd(entry.Key, entry.Value);
 
         return result;
     }
 
-    public static async Task<Dictionary<VariableDeclaratorSyntax, string>> LocateWpfNamedVisuals(Project project)
+    public static async Task<Dictionary<SyntaxToken, string>> LocateWpfNamedVisuals(Project project)
     {
-        Dictionary<VariableDeclaratorSyntax, string> namedVisuals = [];
+        Dictionary<SyntaxToken, string> namedVisuals = [];
 
         foreach (var doc in project.Documents)
         {
@@ -42,7 +42,7 @@ internal static class MemberLocator
                             IsWpfGeneratedField(FieldDeclaration))
                         {
                             VariableDeclaratorSyntax variableDeclarator = FieldDeclaration.Declaration.Variables.First();
-                            namedVisuals.Add(variableDeclarator, entry.Value);
+                            namedVisuals.Add(variableDeclarator.Identifier, entry.Value);
                             Console.WriteLine($"Found WPF field declaration: {variableDeclarator.Identifier.Text} in class {entry.Value}");
                         }
                     }
@@ -100,29 +100,26 @@ internal static class MemberLocator
         return false;
     }
 
-    public static async Task<Dictionary<VariableDeclaratorSyntax, string>> LocateObservableCollections(Project project)
+    public static async Task<Dictionary<SyntaxToken, string>> LocateObservableCollections(Project project)
     {
-        Dictionary<VariableDeclaratorSyntax, string> observableCollections = [];
+        Dictionary<SyntaxToken, string> observableCollections = [];
 
         foreach (Document document in project.Documents)
         {
             if (await document.GetSyntaxRootAsync() is SyntaxNode root &&
                 await document.GetSemanticModelAsync() is SemanticModel semanticModel)
             {
-                IEnumerable<VariableDeclarationSyntax> variableDeclarations = root.DescendantNodes().OfType<VariableDeclarationSyntax>();
+                IEnumerable<PropertyDeclarationSyntax> propertyDeclarations = root.DescendantNodes().OfType<PropertyDeclarationSyntax>();
 
-                foreach (VariableDeclarationSyntax declaration in variableDeclarations)
+                foreach (PropertyDeclarationSyntax declaration in propertyDeclarations)
                 {
                     TypeInfo typeInfo = semanticModel.GetTypeInfo(declaration.Type);
 
                     if (typeInfo.Type is ITypeSymbol typeSymbol && IsObservableCollection(typeSymbol))
                     {
-                        foreach (var variable in declaration.Variables)
+                        if (semanticModel.GetDeclaredSymbol(declaration) is ISymbol variableInfo)
                         {
-                            if (semanticModel.GetDeclaredSymbol(variable) is ISymbol variableInfo)
-                            {
-                                observableCollections.Add(variable, variableInfo.ContainingType.ToDisplayString());
-                            }
+                            observableCollections.Add(declaration.Identifier, variableInfo.ContainingType.ToDisplayString());
                         }
                     }
                 }
@@ -136,9 +133,11 @@ internal static class MemberLocator
     {
         if (typeSymbol is INamedTypeSymbol namedType)
         {
-            return namedType.OriginalDefinition.ToDisplayString() ==
-                   "ObservableCollection<>";
+            string displayString = namedType.OriginalDefinition.ToDisplayString();
+            return displayString is "System.Collections.ObjectModel.ObservableCollection<T>"
+                                 or "ObservableCollection<>";
         }
+
         return false;
     }
 }

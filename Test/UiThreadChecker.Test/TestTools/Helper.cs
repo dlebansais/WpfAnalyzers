@@ -39,7 +39,12 @@ internal static class Helper
         {
             string message = $"Unknown caller found for {e.MethodName}{(e.LineNumber > 0 ? $", line {e.LineNumber}" : string.Empty)}, while checking '{e.VariableName}'.";
 
-            Assert.Fail(message);
+            if (checkContext.AssertUnknownCaller)
+                Assert.Fail(message);
+            else
+                Console.WriteLine(message);
+
+            checkContext.UnknownCallerCount++;
         };
 
         await uiThreadChecker.CheckSolutionAsync(solutionPath, "Debug", "net8.0-windows", projectName);

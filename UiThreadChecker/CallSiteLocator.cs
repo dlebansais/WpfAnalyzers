@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -17,32 +18,30 @@ using Microsoft.CodeAnalysis.FindSymbols;
 
 internal static class CallSiteLocator
 {
-    public static async IAsyncEnumerable<SymbolCallerInfo> LocateVariableCallers(Project project, VariableDeclaratorSyntax variableDeclarator, string classPath)
+    public static async Task<List<SymbolCallerInfo>> LocateVariableCallers(Project project, SyntaxToken variableDeclarator, string classPath)
     {
-        string clasName = classPath.Split('.').Last();
+        string className = classPath.Split('.').Last();
+        List<SymbolCallerInfo> result = new();
+        IEnumerable<ISymbol> classDeclarations = await SymbolFinder.FindDeclarationsAsync(project, className, ignoreCase: false);
 
-        IEnumerable<ISymbol> classDeclarations = await SymbolFinder.FindDeclarationsAsync(project, clasName, ignoreCase: false);
-
-        foreach (var classDeclaration in classDeclarations)
+        foreach (ISymbol classDeclaration in classDeclarations)
         {
-            if (classDeclaration is ITypeSymbol typeDeclaration && typeDeclaration.ContainingNamespace.ToString() is string containingNamespace)
+            ITypeSymbol typeDeclaration = (ITypeSymbol)classDeclaration;
+            string? containingNamespace = typeDeclaration.ContainingNamespace.ToString();
+            string symbolClassPath = containingNamespace + "." + typeDeclaration.Name;
+            if (classPath == symbolClassPath)
             {
-                string symbolClassPath = containingNamespace + "." + typeDeclaration.Name;
-                if (classPath == symbolClassPath)
-                {
-                    ImmutableArray<ISymbol> members = typeDeclaration.GetMembers();
-                    ISymbol symbol = members.First(m => m.Name == variableDeclarator.Identifier.Text);
-                    IEnumerable<SymbolCallerInfo> callers = await SymbolFinder.FindCallersAsync(symbol, project.Solution);
+                ImmutableArray<ISymbol> members = typeDeclaration.GetMembers(variableDeclarator.Text);
+                ISymbol symbol = members.First();
+                IEnumerable<SymbolCallerInfo> callers = await SymbolFinder.FindCallersAsync(symbol, project.Solution);
 
-                    Console.WriteLine($"Found {callers.Count()} use(s) for field {variableDeclarator.Identifier.Text}");
+                Console.WriteLine($"Found {callers.Count()} use(s) for field {variableDeclarator.Text}");
 
-                    foreach (var caller in callers)
-                    {
-                        yield return caller;
-                    }
-                }
+                result.AddRange(callers);
             }
         }
+
+        return result;
     }
 
     public static void InitReduceCallSite(Compilation compilation)
@@ -52,6 +51,7 @@ internal static class CallSiteLocator
         TaskRunSymbols = GetTaskRunSymbols(compilation);
         (DispatcherInvokeSymbols, DispatcherBeginInvokeSymbols, DispatcherInvokeAsyncSymbols) = GetDispatcherSymbols(compilation);
         ConfiguredTaskAwaitableSymbol = GetConfiguredTaskAwaitableSymbol(compilation);
+        ConfiguredTaskAwaitableGenericSymbol = GetConfiguredTaskAwaitableGenericSymbol(compilation);
     }
 
     private static IMethodSymbol? ComponentConnectorConnect;
@@ -61,6 +61,7 @@ internal static class CallSiteLocator
     private static ImmutableArray<IMethodSymbol> DispatcherBeginInvokeSymbols = [];
     private static ImmutableArray<IMethodSymbol> DispatcherInvokeAsyncSymbols = [];
     private static ITypeSymbol? ConfiguredTaskAwaitableSymbol;
+    private static ITypeSymbol? ConfiguredTaskAwaitableGenericSymbol;
 
     public static async Task<CallSiteInfo> ReduceCallSite(Solution solution, Compilation compilation, List<CallerInfo> uncheckedCallers)
     {
@@ -84,58 +85,75 @@ internal static class CallSiteLocator
         foreach (var callerNode in callerNodes)
         {
             (SyntaxNode? rootCall, List<SyntaxNode> visitedNodes) = GetRootCall(callerNode);
+            bool isHandled = false;
+            SyntaxNode? previousVisitedNode = null;
 
             foreach (var visitedNode in visitedNodes)
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, visitedNode, out CallSiteInfo? result))
+            {
+                if ((visitedNode is BlockSyntax || previousVisitedNode is BlockSyntax || previousVisitedNode is ElseClauseSyntax) &&
+                    IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, visitedNode, previousVisitedNode, out CallSiteInfo? result))
+                {
                     return result;
+                }
+
+                previousVisitedNode = visitedNode;
+            }
 
             if (rootCall is PropertyDeclarationSyntax propertyDeclaration && uncheckedCaller.CallingSymbol is IPropertySymbol propertySymbol)
             {
                 var symbol = compilation.GetSemanticModel(propertyDeclaration.SyntaxTree).GetDeclaredSymbol(propertyDeclaration);
-                if (SymbolEqualityComparer.Default.Equals(symbol, propertySymbol))
-                    continue;
+                Debug.Assert(SymbolEqualityComparer.Default.Equals(symbol, propertySymbol));
+                isHandled = true;
             }
-            else if (rootCall is MethodDeclarationSyntax methodDeclaration && uncheckedCaller.CallingSymbol is IMethodSymbol methodSymbol)
+            
+            if (rootCall is MethodDeclarationSyntax methodDeclaration && uncheckedCaller.CallingSymbol is IMethodSymbol methodSymbol)
             {
                 var symbol = compilation.GetSemanticModel(methodDeclaration.SyntaxTree).GetDeclaredSymbol(methodDeclaration);
-                if (SymbolEqualityComparer.Default.Equals(symbol, methodSymbol))
-                    continue;
+                Debug.Assert(SymbolEqualityComparer.Default.Equals(symbol, methodSymbol));
+                isHandled = true;
             }
-            else if (rootCall is ConstructorDeclarationSyntax constructorDeclaration && uncheckedCaller.CallingSymbol is IMethodSymbol constructorSymbol)
+
+            if (rootCall is ConstructorDeclarationSyntax constructorDeclaration && uncheckedCaller.CallingSymbol is IMethodSymbol constructorSymbol)
             {
                 var symbol = compilation.GetSemanticModel(constructorDeclaration.SyntaxTree).GetDeclaredSymbol(constructorDeclaration);
-                if (SymbolEqualityComparer.Default.Equals(symbol, constructorSymbol))
-                    continue;
+                Debug.Assert(SymbolEqualityComparer.Default.Equals(symbol, constructorSymbol));
+                isHandled = true;
             }
-            else if (rootCall is IndexerDeclarationSyntax indexerDeclaration && uncheckedCaller.CallingSymbol is IPropertySymbol indexSymbol)
+
+            if (rootCall is IndexerDeclarationSyntax indexerDeclaration && uncheckedCaller.CallingSymbol is IPropertySymbol indexSymbol)
             {
                 var symbol = compilation.GetSemanticModel(indexerDeclaration.SyntaxTree).GetDeclaredSymbol(indexerDeclaration);
-                if (SymbolEqualityComparer.Default.Equals(symbol, indexSymbol))
-                    continue;
+                Debug.Assert(SymbolEqualityComparer.Default.Equals(symbol, indexSymbol));
+                isHandled = true;
             }
-            else if (rootCall is ParenthesizedLambdaExpressionSyntax parenthesizedLambdaExpression)
+
+            if (rootCall is ParenthesizedLambdaExpressionSyntax parenthesizedLambdaExpression)
             {
-                var typeInfo = compilation.GetSemanticModel(parenthesizedLambdaExpression.SyntaxTree).GetTypeInfo(parenthesizedLambdaExpression);
-                if (typeInfo.ConvertedType is ITypeSymbol &&
-                    parenthesizedLambdaExpression.Ancestors().OfType<InvocationExpressionSyntax>().FirstOrDefault() is InvocationExpressionSyntax invocationExpression &&
-                    compilation.GetSemanticModel(invocationExpression.SyntaxTree).GetSymbolInfo(invocationExpression).Symbol is ISymbol invokedSymbol)
+                TypeInfo typeInfo = compilation.GetSemanticModel(parenthesizedLambdaExpression.SyntaxTree).GetTypeInfo(parenthesizedLambdaExpression);
+                if (parenthesizedLambdaExpression.Ancestors().OfType<InvocationExpressionSyntax>().FirstOrDefault() is InvocationExpressionSyntax invocationExpression)
                 {
-                    CallSiteInfo? result;
+                    SymbolInfo InvokedSymbolInfo = compilation.GetSemanticModel(invocationExpression.SyntaxTree).GetSymbolInfo(invocationExpression);
+                    if (InvokedSymbolInfo.Symbol is IMethodSymbol invokedSymbol)
+                    {
+                        CallSiteInfo? result;
 
-                    if (IsInvalidCallSite(TaskRunSymbols, invokedSymbol, parenthesizedLambdaExpression, uncheckedCaller, variableName, out result))
-                        return result;
-                    if (IsTerminalCallSiteInfo(DispatcherInvokeSymbols, invokedSymbol, out result))
-                        return result;
-                    if (IsTerminalCallSiteInfo(DispatcherBeginInvokeSymbols, invokedSymbol, out result))
-                        return result;
-                    if (IsTerminalCallSiteInfo(DispatcherInvokeAsyncSymbols, invokedSymbol, out result))
-                        return result;
+                        if (IsInvalidCallSite(TaskRunSymbols, invokedSymbol, parenthesizedLambdaExpression, uncheckedCaller, variableName, out result))
+                            return result;
+                        if (IsTerminalCallSiteInfo(DispatcherInvokeSymbols, invokedSymbol, out result))
+                            return result;
+                        if (IsTerminalCallSiteInfo(DispatcherBeginInvokeSymbols, invokedSymbol, out result))
+                            return result;
+                        if (IsTerminalCallSiteInfo(DispatcherInvokeAsyncSymbols, invokedSymbol, out result))
+                            return result;
+                    }
                 }
+
+                rootWithNoCaller = rootCall;
+                hasNoCaller = true;
+                break;
             }
 
-            rootWithNoCaller = rootCall;
-            hasNoCaller = true;
-            break;
+            Debug.Assert(isHandled);
         }
 
         if (IsTerminalCallSite(compilation, uncheckedCaller))
@@ -143,13 +161,13 @@ internal static class CallSiteLocator
 
         if (hasNoCaller)
         {
+            Debug.Assert(rootWithNoCaller is not null);
+
             return new CallSiteInfo()
             {
                 ResolvedCallType = ResolvedCallType.Unknown,
                 Caller = uncheckedCaller,
-                LineNumber = rootWithNoCaller is not null
-                    ? rootWithNoCaller.GetLocation().GetLineSpan().StartLinePosition.Line
-                    : -1,
+                LineNumber = rootWithNoCaller.GetLocation().GetLineSpan().StartLinePosition.Line,
                 VariableName = variableName,
             };
         }
@@ -230,6 +248,14 @@ internal static class CallSiteLocator
         return configuredTaskAwaitableTypeSymbol;
     }
 
+    private static ITypeSymbol GetConfiguredTaskAwaitableGenericSymbol(Compilation compilation)
+    {
+        Type configuredTaskAwaitableType = typeof(ConfiguredTaskAwaitable<>);
+        INamedTypeSymbol configuredTaskAwaitableTypeSymbol = compilation.GetTypeByMetadataName(configuredTaskAwaitableType.FullName!)!;
+
+        return configuredTaskAwaitableTypeSymbol;
+    }
+
     private static bool IsImplementationOf(IMethodSymbol candidate, IMethodSymbol interfaceMethod)
     {
         INamedTypeSymbol implementingType = candidate.ContainingType;
@@ -251,7 +277,7 @@ internal static class CallSiteLocator
         return false;
     }
 
-    private static bool InheritFrom(ITypeSymbol candidate, ITypeSymbol ancestorType)
+    internal static bool InheritFrom(ITypeSymbol candidate, ITypeSymbol ancestorType)
     {
         ITypeSymbol? current = candidate;
 
@@ -268,19 +294,23 @@ internal static class CallSiteLocator
 
     private static async Task<List<SyntaxNode>> GetCallSyntaxNodesAsync(SymbolCallerInfo callerInfo, Solution solution, CancellationToken cancellationToken = default)
     {
-        var result = new List<SyntaxNode>();
+        List<SyntaxNode> result = new();
 
         foreach (var location in callerInfo.Locations)
         {
+            /*
             if (!location.IsInSource)
                 continue;
 
             var document = solution.GetDocument(location.SourceTree);
             if (document == null)
                 continue;
+            */
 
-            var root = await location.SourceTree.GetRootAsync(cancellationToken).ConfigureAwait(false);
-            var node = root.FindNode(location.SourceSpan);
+            Debug.Assert(location.SourceTree is not null);
+
+            SyntaxNode root = await location.SourceTree.GetRootAsync(cancellationToken).ConfigureAwait(false);
+            SyntaxNode node = root.FindNode(location.SourceSpan);
             result.Add(node);
         }
 
@@ -292,8 +322,10 @@ internal static class CallSiteLocator
         SyntaxNode? node = caller;
         List<SyntaxNode> visitedNodes = new();
 
-        while (node is not null)
+        while (true)
         {
+            Debug.Assert(node is not null);
+
             visitedNodes.Add(node);
 
             switch (node)
@@ -301,7 +333,8 @@ internal static class CallSiteLocator
                 case ArrowExpressionClauseSyntax arrowExpression:
                     return (arrowExpression.Parent, visitedNodes);
                 case AccessorDeclarationSyntax accessorDeclaration:
-                    return (accessorDeclaration.Parent?.Parent, visitedNodes );
+                    Debug.Assert(accessorDeclaration.Parent is not null);
+                    return (accessorDeclaration.Parent.Parent, visitedNodes );
                 case ParenthesizedLambdaExpressionSyntax parenthesizedLambdaExpression:
                     return (parenthesizedLambdaExpression, visitedNodes );
                 case MethodDeclarationSyntax:
@@ -312,12 +345,10 @@ internal static class CallSiteLocator
                     break;
             }
         }
-
-        return (null, new());
     }
 
     private static bool IsInvalidCallSite(ImmutableArray<IMethodSymbol> methodSymbols,
-                                          ISymbol invokedSymbol,
+                                          IMethodSymbol invokedSymbol,
                                           ParenthesizedLambdaExpressionSyntax parenthesizedLambdaExpression,
                                           SymbolCallerInfo uncheckedCaller,
                                           string variableName,
@@ -342,7 +373,7 @@ internal static class CallSiteLocator
     }
 
     private static bool IsTerminalCallSiteInfo(ImmutableArray<IMethodSymbol> methodSymbols,
-                                               ISymbol invokedSymbol,
+                                               IMethodSymbol invokedSymbol,
                                                [NotNullWhen(true)] out CallSiteInfo? result)
     {
         if (methodSymbols.Any(methodSymbol => IsMethodSymbolEqual(methodSymbol, invokedSymbol)))
@@ -355,158 +386,193 @@ internal static class CallSiteLocator
         return false;
     }
 
-    private static bool IsMethodSymbolEqual(IMethodSymbol methodSymbol, ISymbol symbol)
+    private static bool IsMethodSymbolEqual(IMethodSymbol methodSymbol, IMethodSymbol otherMethodSymbol)
     {
-        if (symbol is IMethodSymbol otherMethodSymbol)
+        if (!methodSymbol.IsGenericMethod &&
+            !otherMethodSymbol.IsGenericMethod &&
+            SymbolEqualityComparer.Default.Equals(otherMethodSymbol, methodSymbol))
         {
-            if (!methodSymbol.IsGenericMethod &&
-                !otherMethodSymbol.IsGenericMethod &&
-                SymbolEqualityComparer.Default.Equals(otherMethodSymbol, methodSymbol))
-            {
-                return true;
-            }
+            return true;
+        }
 
-            if (methodSymbol.IsGenericMethod &&
-                otherMethodSymbol.IsGenericMethod &&
-                SymbolEqualityComparer.Default.Equals(otherMethodSymbol.ConstructedFrom, methodSymbol.ConstructedFrom))
-            {
-                return true;
-            }
+        if (methodSymbol.IsGenericMethod &&
+            otherMethodSymbol.IsGenericMethod &&
+            SymbolEqualityComparer.Default.Equals(otherMethodSymbol.ConstructedFrom, methodSymbol.ConstructedFrom))
+        {
+            return true;
         }
 
         return false;
     }
 
-    private static bool IsConfigureAwaitFalse(Compilation compilation, string variableName, SymbolCallerInfo uncheckedCaller, SyntaxNode node, [NotNullWhen(true)] out CallSiteInfo? result)
+    private static bool IsConfigureAwaitFalse(Compilation compilation, string variableName, SymbolCallerInfo uncheckedCaller, SyntaxNode node, SyntaxNode? previousVisitedNode, [NotNullWhen(true)] out CallSiteInfo? result)
     {
         switch (node)
         {
-            case BlockSyntax blockSyntax:
-                foreach (var statement in blockSyntax.Statements)
+            case BlockSyntax block:
+                foreach (var statement in block.Statements)
                 {
-                    if (statement == node)
-                    {
-                        result = null;
-                        return false;
-                    }
+                    if (statement == previousVisitedNode)
+                        break;
 
-                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, statement, out result))
-                    {
+                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, statement, null, out result))
                         return true;
-                    }
                 }
-                break;
-            case IfStatementSyntax ifStatement:
-                if (ifStatement.Condition is ExpressionSyntax ifCondition && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, ifCondition, out result))
-                    return true;
-                break;
 
-            case WhileStatementSyntax whileStatement:
-                if (whileStatement.Condition is ExpressionSyntax whileCondition && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, whileCondition, out result))
-                    return true;
-                break;
+                result = null;
+                return false;
 
-            case DoStatementSyntax doStatementSyntax:
-                if (doStatementSyntax.Condition is ExpressionSyntax doCondition && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, doCondition, out result))
-                    return true;
-                break;
-
-            case ForStatementSyntax forStatement:
-                if (forStatement.Declaration is VariableDeclarationSyntax forStatementVariableDeclaration && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, forStatementVariableDeclaration, out result))
-                    return true;
-                foreach (var initializer in forStatement.Initializers)
-                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, initializer, out result))
-                        return true;
-                if (forStatement.Condition is ExpressionSyntax forCondition && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, forCondition, out result))
-                    return true;
-                break;
-            case VariableDeclarationSyntax variableDeclaration:
-                foreach (var variableDeclarator in variableDeclaration.Variables)
-                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, variableDeclarator, out result))
-                        return true;
-                break;
-            case ExpressionStatementSyntax expressionStatement:
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, expressionStatement.Expression, out result))
-                    return true;
-                break;
-            case MemberAccessExpressionSyntax memberAccessExpression:
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, memberAccessExpression.Expression, out result))
-                    return true;
-                break;
-            case ReturnStatementSyntax returnStatementSyntax:
-                if (returnStatementSyntax.Expression is ExpressionSyntax expression && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, expression, out result))
-                    return true;
-                break;
-            case AssignmentExpressionSyntax assignmentExpression:
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, assignmentExpression.Left, out result))
-                    return true;
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, assignmentExpression.Right, out result))
-                    return true;
-                break;
-            case SwitchStatementSyntax switchStatement:
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, switchStatement.Expression, out result))
-                    return true;
-                foreach (var section in switchStatement.Sections)
-                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, section, out result))
-                        return true;
-                break;
-            case SwitchSectionSyntax switchSectionSyntax:
-                foreach (var statement in switchSectionSyntax.Statements)
-                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, statement, out result))
-                        return true;
-                break;
-            case EqualsValueClauseSyntax equalsValueClause:
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, equalsValueClause.Value, out result))
-                    return true;
-                break;
-            case InvocationExpressionSyntax invocationExpression:
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, invocationExpression.Expression, out result))
-                    return true;
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, invocationExpression.ArgumentList, out result))
-                    return true;
-                break;
-            case ArgumentListSyntax argumentList:
-                foreach (var argument in argumentList.Arguments)
-                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, argument, out result))
-                        return true;
-                break;
-            case ArgumentSyntax argument:
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, argument.Expression, out result))
-                    return true;
-                break;
-            case BinaryExpressionSyntax binaryExpressionSyntax:
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, binaryExpressionSyntax.Left, out result))
-                    return true;
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, binaryExpressionSyntax.Right, out result))
-                    return true;
-                break;
             case AwaitExpressionSyntax awaitExpression:
                 if (IsConfigureAwaitFalseAwaitExpression(compilation, variableName, uncheckedCaller, awaitExpression, out result))
                     return true;
                 break;
+
+            case IfStatementSyntax ifStatement:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, ifStatement.Condition, null, out result))
+                    return true;
+                break;
+
+            case ElseClauseSyntax:
+                break;
+
+            case WhileStatementSyntax whileStatement:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, whileStatement.Condition, null, out result))
+                    return true;
+                break;
+
+            case DoStatementSyntax doStatement:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, doStatement.Condition, null, out result))
+                    return true;
+                break;
+
+            case ForStatementSyntax forStatement:
+                if (forStatement.Declaration is VariableDeclarationSyntax forStatementVariableDeclaration && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, forStatementVariableDeclaration, null, out result))
+                    return true;
+                foreach (var initializer in forStatement.Initializers)
+                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, initializer, null, out result))
+                        return true;
+                if (forStatement.Condition is ExpressionSyntax forCondition && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, forCondition, null, out result))
+                    return true;
+                break;
+            case VariableDeclarationSyntax variableDeclaration:
+                foreach (var variableDeclarator in variableDeclaration.Variables)
+                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, variableDeclarator, null, out result))
+                        return true;
+                break;
+            case ExpressionStatementSyntax expressionStatement:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, expressionStatement.Expression, null, out result))
+                    return true;
+                break;
+            case MemberAccessExpressionSyntax memberAccessExpression:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, memberAccessExpression.Expression, null, out result))
+                    return true;
+                break;
+            case ReturnStatementSyntax returnStatementSyntax:
+                if (returnStatementSyntax.Expression is ExpressionSyntax expression && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, expression, null, out result))
+                    return true;
+                break;
+            case AssignmentExpressionSyntax assignmentExpression:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, assignmentExpression.Left, null, out result))
+                    return true;
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, assignmentExpression.Right, null, out result))
+                    return true;
+                break;
+            case SwitchStatementSyntax switchStatement:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, switchStatement.Expression, null, out result))
+                    return true;
+                foreach (var section in switchStatement.Sections)
+                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, section, null, out result))
+                        return true;
+                break;
+            case SwitchSectionSyntax switchSectionSyntax:
+                foreach (var statement in switchSectionSyntax.Statements)
+                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, statement, null, out result))
+                        return true;
+                break;
+            case EqualsValueClauseSyntax equalsValueClause:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, equalsValueClause.Value, null, out result))
+                    return true;
+                break;
+            case InvocationExpressionSyntax invocationExpression:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, invocationExpression.Expression, null, out result))
+                    return true;
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, invocationExpression.ArgumentList, null, out result))
+                    return true;
+                break;
+            case ArgumentListSyntax argumentList:
+                foreach (var argument in argumentList.Arguments)
+                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, argument, null, out result))
+                        return true;
+                break;
+            case ArgumentSyntax argument:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, argument.Expression, null, out result))
+                    return true;
+                break;
+            case BinaryExpressionSyntax binaryExpressionSyntax:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, binaryExpressionSyntax.Left, null, out result))
+                    return true;
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, binaryExpressionSyntax.Right, null, out result))
+                    return true;
+                break;
             case ParenthesizedExpressionSyntax parenthesizedExpression:
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, parenthesizedExpression.Expression, out result))
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, parenthesizedExpression.Expression, null, out result))
                     return true;
                 break;
             case CastExpressionSyntax castExpression:
-                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, castExpression.Expression, out result))
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, castExpression.Expression, null, out result))
                     return true;
                 break;
             case VariableDeclaratorSyntax variableDeclarator:
-                if (variableDeclarator.Initializer is EqualsValueClauseSyntax initializerEqualsValueClause && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, initializerEqualsValueClause, out result))
+                if (variableDeclarator.Initializer is EqualsValueClauseSyntax initializerEqualsValueClause && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, initializerEqualsValueClause, null, out result))
                     return true;
                 break;
             case ObjectCreationExpressionSyntax objectCreationExpression:
-                if (objectCreationExpression.ArgumentList is ArgumentListSyntax objectCreationExpressionArgumentList && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, objectCreationExpressionArgumentList, out result))
+                if (objectCreationExpression.ArgumentList is ArgumentListSyntax objectCreationExpressionArgumentList && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, objectCreationExpressionArgumentList, null, out result))
                     return true;
-                if (objectCreationExpression.Initializer is InitializerExpressionSyntax objectCreationExpressionInitializer && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, objectCreationExpressionInitializer, out result))
+                if (objectCreationExpression.Initializer is InitializerExpressionSyntax objectCreationExpressionInitializer && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, objectCreationExpressionInitializer, null, out result))
                     return true;
                 break;
             case InitializerExpressionSyntax initializerExpression:
                 foreach (var initExpression in initializerExpression.Expressions)
-                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, initExpression, out result))
+                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, initExpression, null, out result))
                         return true;
                 break;
+            case LocalDeclarationStatementSyntax localDeclarationStatement:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, localDeclarationStatement.Declaration, null, out result))
+                    return true;
+                break;
+            case TryStatementSyntax tryStatement:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, tryStatement.Block, null, out result))
+                    return true;
+                foreach (var catchClause in tryStatement.Catches)
+                    if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, catchClause, null, out result))
+                        return true;
+                if (tryStatement.Finally is FinallyClauseSyntax finallyClause && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, finallyClause, null, out result))
+                    return true;
+                break;
+            case CatchClauseSyntax catchClause:
+                if (catchClause.Declaration is CatchDeclarationSyntax catchClauseDeclaration && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, catchClauseDeclaration, null, out result))
+                    return true;
+                if (catchClause.Filter is CatchFilterClauseSyntax catchFilterClause && IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, catchFilterClause, null, out result))
+                    return true;
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, catchClause.Block, null, out result))
+                    return true;
+                break;
+            case CatchDeclarationSyntax:
+                break;
+            case CatchFilterClauseSyntax filterClause:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, filterClause.FilterExpression, null, out result))
+                    return true;
+                break;
+            case ThrowStatementSyntax: /* A throw interrupts the execution flow */
+                break;
+            case ConditionalAccessExpressionSyntax conditionalAccessExpression:
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, conditionalAccessExpression.Expression, null, out result))
+                    return true;
+                if (IsConfigureAwaitFalse(compilation, variableName, uncheckedCaller, conditionalAccessExpression.WhenNotNull, null, out result))
+                    return true;
+                break;
+            case MemberBindingExpressionSyntax:
             case IdentifierNameSyntax:
             case ThisExpressionSyntax:
             case BaseExpressionSyntax:
@@ -532,24 +598,29 @@ internal static class CallSiteLocator
     {
         SemanticModel semanticModel = compilation.GetSemanticModel(awaitExpression.SyntaxTree);
         var typeInfo = semanticModel.GetTypeInfo(awaitExpression.Expression);
-        if (typeInfo.Type is INamedTypeSymbol namedTypeSymbol &&
-            SymbolEqualityComparer.Default.Equals(namedTypeSymbol, ConfiguredTaskAwaitableSymbol))
+        if (typeInfo.Type is INamedTypeSymbol namedTypeSymbol)
         {
-            if (awaitExpression.Expression is InvocationExpressionSyntax invocationExpression &&
-                invocationExpression.ArgumentList.Arguments.Count > 0 &&
-                invocationExpression.ArgumentList.Arguments[0].Expression is LiteralExpressionSyntax literalExpression &&
-                literalExpression.Token.Value is bool value &&
-                !value)
+            bool isConfiguredAwaitable = SymbolEqualityComparer.Default.Equals(namedTypeSymbol, ConfiguredTaskAwaitableSymbol);
+            bool isConfiguredAwaitableGeneric = SymbolEqualityComparer.Default.Equals(namedTypeSymbol.ConstructedFrom, ConfiguredTaskAwaitableGenericSymbol);
+
+            if (isConfiguredAwaitable || isConfiguredAwaitableGeneric)
             {
-                var lineSpan = literalExpression.GetLocation().GetLineSpan();
-                result = new CallSiteInfo()
+                if (awaitExpression.Expression is InvocationExpressionSyntax invocationExpression &&
+                    invocationExpression.ArgumentList.Arguments.Count > 0 &&
+                    invocationExpression.ArgumentList.Arguments[0].Expression is LiteralExpressionSyntax literalExpression &&
+                    literalExpression.Token.Value is bool value &&
+                    !value)
                 {
-                    ResolvedCallType = ResolvedCallType.InvalidAwaiter,
-                    Caller = uncheckedCaller,
-                    LineNumber = lineSpan.StartLinePosition.Line + 1,
-                    VariableName = variableName,
-                };
-                return true;
+                    var lineSpan = literalExpression.GetLocation().GetLineSpan();
+                    result = new CallSiteInfo()
+                    {
+                        ResolvedCallType = ResolvedCallType.InvalidAwaiter,
+                        Caller = uncheckedCaller,
+                        LineNumber = lineSpan.StartLinePosition.Line + 1,
+                        VariableName = variableName,
+                    };
+                    return true;
+                }
             }
         }
 

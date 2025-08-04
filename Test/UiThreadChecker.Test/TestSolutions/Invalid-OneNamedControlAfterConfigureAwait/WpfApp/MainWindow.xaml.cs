@@ -14,6 +14,11 @@ public partial class MainWindow : Window
         InitializeComponent();
     }
 
+    public async Task<int> TestControlMethod0()
+    {
+        return await Task.FromResult(42);
+    }
+
     public async Task TestControlMethod1()
     {
         await Task.Run(() =>
@@ -35,7 +40,7 @@ public partial class MainWindow : Window
 
     public async Task TestControlMethod3()
     {
-        if (await TestControlMethod2().ConfigureAwait(false) == 42)
+        if (await TestControlMethod0().ConfigureAwait(false) == 42)
         {
             testControl.Visibility = Visibility.Visible;
         }
@@ -43,77 +48,71 @@ public partial class MainWindow : Window
 
     public async Task TestControlMethod4()
     {
-        if (await TestControlMethod2().ConfigureAwait(false) == 42)
+        if (await TestControlMethod0().ConfigureAwait(false) == 42)
         {
         }
-
-        testControl.Visibility = Visibility.Visible;
+        else
+        {
+            testControl.Visibility = Visibility.Visible;
+        }
     }
 
     public async Task TestControlMethod5()
     {
-        while (await TestControlMethod2().ConfigureAwait(false) == 42)
-        {
-            testControl.Visibility = Visibility.Visible;
-        }
-    }
-
-    public async Task TestControlMethod6()
-    {
-        while (await TestControlMethod2().ConfigureAwait(false) == 42)
+        if (await TestControlMethod0().ConfigureAwait(false) == 42)
         {
         }
 
         testControl.Visibility = Visibility.Visible;
     }
 
-    public async Task TestControlMethod7()
+    public async Task TestControlMethod6()
     {
-        do
+        while (await TestControlMethod0().ConfigureAwait(false) == 42)
         {
             testControl.Visibility = Visibility.Visible;
         }
-        while (await TestControlMethod2().ConfigureAwait(false) == 42);
+    }
+
+    public async Task TestControlMethod7()
+    {
+        while (await TestControlMethod0().ConfigureAwait(false) == 42)
+        {
+        }
+
+        testControl.Visibility = Visibility.Visible;
     }
 
     public async Task TestControlMethod8()
     {
         do
         {
+            testControl.Visibility = Visibility.Visible;
         }
-        while (await TestControlMethod2().ConfigureAwait(false) == 42);
-
-        testControl.Visibility = Visibility.Visible;
+        while (await TestControlMethod0().ConfigureAwait(false) == 42);
     }
 
     public async Task TestControlMethod9()
     {
-        for (int i = 0; i < await TestControlMethod2().ConfigureAwait(false); i++)
+        do
         {
-            testControl.Visibility = Visibility.Visible;
         }
+        while (await TestControlMethod0().ConfigureAwait(false) == 42);
+
+        testControl.Visibility = Visibility.Visible;
     }
 
     public async Task TestControlMethod10()
     {
-        for (int i = 0; i < await TestControlMethod2().ConfigureAwait(false); i++)
-        {
-        }
-
-        testControl.Visibility = Visibility.Visible;
-    }
-
-    public async Task TestControlMethod11()
-    {
-        for (int i = await TestControlMethod2().ConfigureAwait(false); i < 10; i++)
+        for (int i = 0; i < await TestControlMethod0().ConfigureAwait(false); i++)
         {
             testControl.Visibility = Visibility.Visible;
         }
     }
 
-    public async Task TestControlMethod12()
+    public async Task TestControlMethod11()
     {
-        for (int i = await TestControlMethod2().ConfigureAwait(false); i < 10; i++)
+        for (int i = 0; i < await TestControlMethod0().ConfigureAwait(false); i++)
         {
         }
 
@@ -122,14 +121,55 @@ public partial class MainWindow : Window
 
     public async Task TestControlMethod12()
     {
-        _ = await TestControlMethod2().ConfigureAwait(false) + await TestControlMethod2().ConfigureAwait(true);
-
-        testControl.Visibility = Visibility.Visible;
+        for (int i = await TestControlMethod0().ConfigureAwait(false); i < 10; i++)
+        {
+            testControl.Visibility = Visibility.Visible;
+        }
     }
 
     public async Task TestControlMethod13()
     {
-        _ = await TestControlMethod2().ConfigureAwait(true) + await TestControlMethod2().ConfigureAwait(false);
+        for (int i = await TestControlMethod0().ConfigureAwait(false); i < 10; i++)
+        {
+        }
+
+        testControl.Visibility = Visibility.Visible;
+    }
+
+    public async Task TestControlMethod14()
+    {
+        for (, await TestControlMethod0().ConfigureAwait(false); i < 10; i++)
+        {
+            testControl.Visibility = Visibility.Visible;
+        }
+    }
+
+    public async Task TestControlMethod15()
+    {
+        for (, await TestControlMethod0().ConfigureAwait(false); i < 10; i++)
+        {
+        }
+
+        testControl.Visibility = Visibility.Visible;
+    }
+
+    public async Task TestControlMethod16()
+    {
+        _ = await TestControlMethod0().ConfigureAwait(false) + await TestControlMethod0().ConfigureAwait(true);
+
+        testControl.Visibility = Visibility.Visible;
+    }
+
+    public async Task TestControlMethod17()
+    {
+        _ = await TestControlMethod0().ConfigureAwait(true) + await TestControlMethod0().ConfigureAwait(false);
+
+        testControl.Visibility = Visibility.Visible;
+    }
+
+    public async Task TestControlMethod18()
+    {
+        _ = (await TestControlMethod2().ConfigureAwait(false)).GetHashCode();
 
         testControl.Visibility = Visibility.Visible;
     }

@@ -22,8 +22,8 @@ public partial class MainWindow : Window
         {
         }).ConfigureAwait(false);
 
-        observableCollection.Add("Test item");
+        Items.Add("Test item");
     }
 
-    public ObservableCollection<string> observableCollection = new();
+    public ObservableCollection<string> Items { get; } = new();
 }

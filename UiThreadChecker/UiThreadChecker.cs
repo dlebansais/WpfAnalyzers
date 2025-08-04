@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.MSBuild;
 
@@ -40,15 +39,15 @@ public class UiThreadChecker
     {
         Compilation compilation = await project.GetCompilationAsync().ConfigureAwait(false) ?? throw new InvalidOperationException();
 
-        Dictionary<VariableDeclaratorSyntax, string> restrictedObjects = await MemberLocator.LocateWpfThreadRestrictedObjects(project).ConfigureAwait(false);
+        Dictionary<SyntaxToken, string> restrictedObjects = await MemberLocator.LocateWpfThreadRestrictedObjects(project).ConfigureAwait(false);
         List<CallerInfo> uncheckedCallers = [];
-        foreach (KeyValuePair<VariableDeclaratorSyntax, string> entry in restrictedObjects)
+        foreach (KeyValuePair<SyntaxToken, string> entry in restrictedObjects)
         {
-            VariableDeclaratorSyntax variableDeclarator = entry.Key;
+            SyntaxToken variableDeclarator = entry.Key;
             string classPath = entry.Value;
 
-            await foreach (var caller in CallSiteLocator.LocateVariableCallers(project, variableDeclarator, classPath))
-                uncheckedCallers.Add(new CallerInfo(variableDeclarator.Identifier.Text, caller, 0));
+            foreach (SymbolCallerInfo caller in await CallSiteLocator.LocateVariableCallers(project, variableDeclarator, classPath))
+                uncheckedCallers.Add(new CallerInfo(variableDeclarator.Text, caller, 0));
         }
 
         CallSiteLocator.InitReduceCallSite(compilation);
