@@ -8,6 +8,8 @@ internal class CallSiteInfo
 
     public SymbolCallerInfo Caller { get; init; }
 
+    public CustomActionMember? CustomActionMember { get; init; }
+
     public int Indentation { get; init; }
 
     public int LineNumber { get; init; } = -1;

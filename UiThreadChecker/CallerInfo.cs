@@ -2,6 +2,6 @@
 
 using Microsoft.CodeAnalysis.FindSymbols;
 
-internal record CallerInfo(string VariableName, SymbolCallerInfo SymbolCaller, int Indentation)
+internal record CallerInfo(string VariableName, SymbolCallerInfo SymbolCaller, int locationIndex, int Indentation)
 {
 }
